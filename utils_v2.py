@@ -308,11 +308,13 @@ def render_dashboard(bank_filter: str = None):
 
     # ── Header ──
     if bank_filter == "BCI":
-        col_logo, col_title = st.columns([0.3, 5])
-        with col_logo:
-            st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
-        with col_title:
-            st.title(bank_filter)
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">'
+            '<img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png" width="80">'
+            '<h1 style="margin:0;font-weight:700;font-size:1.8rem;color:#0f172a;letter-spacing:-0.02em">BCI</h1>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     elif bank_filter:
         st.title(f"🏦 {bank_filter}")
     else:
