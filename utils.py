@@ -83,8 +83,14 @@ def render_dashboard(bank_filter: str = None):
 
     hc1, hc2 = st.columns([5, 1])
     with hc1:
-        title = f"🏦 {bank_filter}" if bank_filter else "🏦 Consolidado"
-        st.title(title)
+        if bank_filter:
+            col_logo, col_title = st.columns([0.3, 5])
+            with col_logo:
+                st.image("https://www.bci.cl/favicon.ico", width=40)
+            with col_title:
+                st.title(bank_filter)
+        else:
+            st.title("🏦 Consolidado")
     with hc2:
         if st.button("🔄 Actualizar", use_container_width=True):
             st.cache_data.clear()
