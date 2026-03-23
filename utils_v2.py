@@ -606,10 +606,6 @@ def render_dashboard(bank_filter: str = None):
         color_continuous_scale=[[0, "#f0f9ff"], [0.5, "#3b82f6"], [1, "#1d4ed8"]],
         aspect="auto", text_auto=True,
     )
-    peak_x = list(heat_pivot.columns).index(peak_hora)
-    peak_y = list(heat_pivot.index).index(peak_dia_idx)
-    fig_heat.add_shape(type="rect", x0=peak_x-0.5, x1=peak_x+0.5, y0=peak_y-0.5, y1=peak_y+0.5,
-                       line=dict(color="#f59e0b", width=2.5))
     fig_heat.update_traces(textfont=dict(size=11, family="Inter"))
     fig_heat.update_layout(
         height=280, margin=dict(t=10, b=10, l=0, r=0),
