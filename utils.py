@@ -86,7 +86,7 @@ def render_dashboard(bank_filter: str = None):
         if bank_filter:
             col_logo, col_title = st.columns([0.3, 5])
             with col_logo:
-                st.image("bci_logo.png", width=80)
+                st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
             with col_title:
                 st.title(bank_filter)
         else:
