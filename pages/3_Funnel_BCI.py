@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 from utils import CARD_CSS
 
 st.set_page_config(page_title="Funnel BCI", page_icon="https://relif.com/favicon.png", layout="wide")
@@ -36,6 +37,19 @@ MOCK_REAL = {
     "abr-26": [15000, 12500, 7100, 70, 60, 950, 410, 72],
 }
 MOCK_PPTO = [18000, 15000, 9000, 70, 60, 1200, 500, 100]
+
+ANIM_CSS = """
+<style>
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.fade-card {
+    opacity: 0;
+    animation: fadeSlideUp 0.45s ease forwards;
+}
+</style>
+"""
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -101,7 +115,7 @@ def _to_abs(values):
 
 
 # ── Layout ───────────────────────────────────────────────────────────
-st.markdown(CARD_CSS, unsafe_allow_html=True)
+st.markdown(CARD_CSS + ANIM_CSS, unsafe_allow_html=True)
 
 # Header
 col_logo, col_title = st.columns([0.3, 5])
@@ -155,36 +169,101 @@ _section_header("Funnel de conversión — " + sel_month)
 funnel_col, detail_col = st.columns([3, 2])
 
 with funnel_col:
-    fig = go.Figure()
-    fig.add_trace(go.Funnel(
-        name="Real",
+    max_val = max((v for v in real_abs if v), default=1)
+    vals    = [v if v is not None else 0 for v in real_abs]
+
+    # Textos finales (mostrados al terminar la animación)
+    texts = []
+    for i, (stage, val) in enumerate(zip(STAGES, real_abs)):
+        if val is None:
+            texts.append(""); continue
+        label_val = f"{real_raw[i]}%" if stage["type"] == "%" else f"{val:,.0f}"
+        pct_txt   = ""
+        if i > 0 and real_abs[i - 1]:
+            p = val / real_abs[i - 1] * 100
+            pct_txt = f"  ↓{p:.0f}%"
+        texts.append(f"<b>{label_val}</b>{pct_txt}")
+
+    hovers = []
+    for i, stage in enumerate(STAGES):
+        label_val = f"{real_raw[i]}%" if stage["type"] == "%" else f"{vals[i]:,.0f}"
+        ppto_txt  = f"<br>Presupuesto: {ppto_abs[i]:,.0f}" if ppto_abs and ppto_abs[i] else ""
+        hovers.append(f"<b>{stage['label']}</b><br>Real: {label_val}{ppto_txt}<extra></extra>")
+
+    # Estado inicial: barras en 0
+    fig = go.Figure(data=[go.Bar(
+        x=[0] * len(labels),
         y=labels,
-        x=real_abs,
-        textinfo="value+percent previous",
-        marker=dict(color=colors, line=dict(width=1.5, color="white")),
-        textfont=dict(family="Inter", size=13),
-        connector=dict(line=dict(color="#e2e8f0", width=1, dash="dot")),
-        opacity=0.95,
-    ))
-    fig.add_trace(go.Funnel(
-        name="Presupuesto",
-        y=labels,
-        x=ppto_abs,
-        textinfo="value",
-        marker=dict(color=["rgba(148,163,184,0.15)"] * len(STAGES),
-                    line=dict(width=1, color="#e2e8f0")),
-        textfont=dict(family="Inter", size=11, color="#94a3b8"),
-        opacity=0.6,
-    ))
+        orientation="h",
+        marker=dict(color=colors, line=dict(width=0)),
+        text=[""] * len(labels),
+        textposition="outside",
+        textfont=dict(family="Inter", size=11.5, color="#374151"),
+        hovertemplate=hovers,
+        showlegend=False,
+        width=0.7,
+    )])
+
+    # Frame final: barras en sus valores reales
+    fig.frames = [go.Frame(
+        data=[go.Bar(
+            x=vals,
+            y=labels,
+            text=texts,
+            marker=dict(color=colors, line=dict(width=0)),
+        )],
+        name="loaded",
+    )]
+
+    # Botón oculto para disparar la animación por JS
     fig.update_layout(
-        height=520,
-        margin=dict(t=20, b=20, l=20, r=20),
+        updatemenus=[dict(
+            type="buttons", visible=False, x=-2, y=-2,
+            buttons=[dict(
+                label="go", method="animate",
+                args=[["loaded"], {
+                    "frame": {"duration": 900, "redraw": True},
+                    "transition": {"duration": 900, "easing": "cubic-in-out"},
+                    "mode": "immediate",
+                }],
+            )],
+        )],
+    )
+
+    # Líneas punteadas de presupuesto (aparecen sin animar)
+    for i, ppto in enumerate(ppto_abs):
+        if ppto:
+            y_pos = len(STAGES) - 1 - i
+            fig.add_shape(
+                type="line",
+                x0=ppto, x1=ppto,
+                y0=y_pos - 0.4, y1=y_pos + 0.4,
+                line=dict(color="#cbd5e1", width=2, dash="dot"),
+            )
+
+    fig.update_layout(
+        height=440,
+        margin=dict(t=10, b=10, l=150, r=180),
         paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False, range=[0, max_val * 1.55]),
+        yaxis=dict(
+            showgrid=False,
+            tickfont=dict(family="Inter", size=12, color="#374151"),
+            categoryorder="array",
+            categoryarray=labels[::-1],
+        ),
         font=dict(family="Inter"),
-        legend=dict(orientation="h", y=-0.04, font=dict(size=12)),
-        funnelmode="overlay",
+        bargap=0.3,
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown(
+        '<div style="display:flex;gap:2rem;justify-content:center;margin-top:-0.5rem">'
+        '<span style="font-size:0.74rem;color:#64748b">&#9632; Barra = Real &nbsp;|&nbsp; <b>N</b> = valor &nbsp;|&nbsp; ↓% = caída vs paso anterior</span>'
+        '<span style="font-size:0.74rem;color:#94a3b8">-- = Presupuesto</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 with detail_col:
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
@@ -203,25 +282,32 @@ with detail_col:
             col2 = "#22c55e" if c2 >= 80 else "#f59e0b" if c2 >= 50 else "#ef4444"
             cumpl_html = f'<span style="font-size:0.7rem;color:{col2}">{c2:.0f}% del presupuesto</span>'
 
-        # Valor a mostrar
+        # Valor a mostrar + atributos para el contador
         if stage["type"] == "%" and i < len(real_raw):
-            val_str = f"{real_raw[i]}%"
+            val_str      = f"{real_raw[i]}%"
+            counter_attr = ""  # porcentajes no se animan
         elif real is not None:
-            val_str = f"{real:,.0f}"
+            val_str      = f"{real:,.0f}"
+            counter_attr = f'data-counter="{real:.0f}"'
         else:
-            val_str = "—"
+            val_str      = "—"
+            counter_attr = ""
+
+        delay = i * 0.08  # escalonado: 0s, 0.08s, 0.16s …
 
         st.markdown(f"""
-        <div style="display:flex;align-items:center;gap:0.8rem;padding:0.6rem 0.9rem;
-                    background:white;border:1px solid #e2e8f0;
+        <div class="fade-card" style="display:flex;align-items:center;gap:0.8rem;
+                    padding:0.6rem 0.9rem;background:white;border:1px solid #e2e8f0;
                     border-left:3px solid {stage['color']};border-radius:10px;
-                    margin-bottom:0.35rem;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+                    margin-bottom:0.35rem;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+                    animation-delay:{delay:.2f}s">
             <div style="flex:1">
                 <div style="font-size:0.67rem;color:#94a3b8;font-weight:700;
                             text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1px">
                     {stage['label']}
                 </div>
-                <div style="font-size:1.15rem;font-weight:700;color:#0f172a">{val_str}</div>
+                <div style="font-size:1.15rem;font-weight:700;color:#0f172a"
+                     {counter_attr}>{val_str}</div>
             </div>
             <div style="text-align:right;line-height:1.6">
                 {conv_html}<br>{cumpl_html}
@@ -290,7 +376,6 @@ insights.append(
     f"— por cada 1.000 usuarios que entran, {overall_conv * 10:.1f} terminan en venta"
 )
 
-# Cumplimiento general
 if ppto_abs and real_abs and ppto_abs[-1] and real_abs[-1]:
     cumpl_venta = real_abs[-1] / ppto_abs[-1] * 100
     cumpl_col   = "verde" if cumpl_venta >= 80 else "amarillo" if cumpl_venta >= 50 else "rojo"
@@ -301,11 +386,51 @@ if ppto_abs and real_abs and ppto_abs[-1] and real_abs[-1]:
 
 items_html = "".join(f"<li style='margin-bottom:0.5rem'>{i}</li>" for i in insights)
 st.markdown(f"""
-<div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #8b5cf6;
-            border-radius:14px;padding:1rem 1.4rem;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+<div class="fade-card" style="background:white;border:1px solid #e2e8f0;
+            border-left:4px solid #8b5cf6;border-radius:14px;padding:1rem 1.4rem;
+            box-shadow:0 1px 4px rgba(0,0,0,0.05);animation-delay:0.3s">
     <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
               color:#94a3b8;margin:0 0 0.6rem">💡 Conclusiones</p>
     <ul style="margin:0;padding-left:1.2rem;color:#374151;font-size:0.88rem;line-height:1.9">
         {items_html}
     </ul>
 </div>""", unsafe_allow_html=True)
+
+# ── Animaciones JS (contador + barras Plotly) ─────────────────────────
+components.html("""
+<script>
+(function () {
+    function run() {
+        var doc = window.parent.document;
+
+        // 1. Contador animado en las cards
+        doc.querySelectorAll('[data-counter]').forEach(function (el) {
+            if (el.dataset.animated) return;
+            el.dataset.animated = '1';
+            var target = parseFloat(el.getAttribute('data-counter'));
+            var start  = null;
+            function step(ts) {
+                if (!start) start = ts;
+                var t    = Math.min((ts - start) / 1000, 1);
+                var ease = 1 - Math.pow(1 - t, 3);
+                el.textContent = Math.round(target * ease).toLocaleString('es-CL');
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+
+        // 2. Animar barras del funnel (primer gráfico Plotly)
+        var Plotly = window.parent.Plotly;
+        var plots  = doc.querySelectorAll('.js-plotly-plot');
+        if (Plotly && plots.length > 0) {
+            Plotly.animate(plots[0], ['loaded'], {
+                transition: { duration: 900, easing: 'cubic-in-out' },
+                frame:      { duration: 900, redraw: true },
+                mode:       'immediate',
+            });
+        }
+    }
+    setTimeout(run, 400);
+})();
+</script>
+""", height=0)

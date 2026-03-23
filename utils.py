@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -156,6 +157,10 @@ hr { border: none !important; border-top: 1px solid #e2e8f0 !important; margin: 
 }
 @keyframes countUp {
     from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 .kpi-delta { font-size: 0.75rem; font-weight: 500; margin-top: 0.2rem; }
@@ -396,31 +401,31 @@ def render_dashboard(bank_filter: str = None):
 
     with k1:
         st.markdown(f"""
-        <div class="kpi-card blue">
+        <div class="kpi-card blue" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0s;opacity:0">
             <div class="kpi-label">Total Requests</div>
-            <div class="kpi-value">{total_curr}</div>
+            <div class="kpi-value" data-counter="{total_curr}">{total_curr}</div>
             {_trend_arrow(pct_total)}
         </div>""", unsafe_allow_html=True)
     with k2:
         color = "green" if tasa >= 50 else "red"
         st.markdown(f"""
-        <div class="kpi-card {color}">
+        <div class="kpi-card {color}" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.1s;opacity:0">
             <div class="kpi-label">Tasa de Aprobación</div>
-            <div class="kpi-value">{tasa}%</div>
+            <div class="kpi-value" data-counter="{tasa}" data-suffix="%">{tasa}%</div>
             {_trend_arrow(_pct_change(tasa, tasa_prev))}
         </div>""", unsafe_allow_html=True)
     with k3:
         st.markdown(f"""
-        <div class="kpi-card green">
+        <div class="kpi-card green" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.2s;opacity:0">
             <div class="kpi-label">Enviadas al banco</div>
-            <div class="kpi-value">{env_curr}</div>
+            <div class="kpi-value" data-counter="{env_curr}">{env_curr}</div>
             {_trend_arrow(pct_env)}
         </div>""", unsafe_allow_html=True)
     with k4:
         st.markdown(f"""
-        <div class="kpi-card red">
+        <div class="kpi-card red" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.3s;opacity:0">
             <div class="kpi-label">Rechazadas</div>
-            <div class="kpi-value">{rec_curr}</div>
+            <div class="kpi-value" data-counter="{rec_curr}">{rec_curr}</div>
             {_trend_arrow(-pct_rec)}
         </div>""", unsafe_allow_html=True)
 
@@ -444,26 +449,31 @@ def render_dashboard(bank_filter: str = None):
     # ── Gauge ──
     _, gauge_col, _ = st.columns([1, 2, 1])
     with gauge_col:
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
-            value=tasa,
-            domain={"x": [0, 1], "y": [0, 1]},
-            delta={"reference": tasa_prev, "suffix": "%", "valueformat": ".0f"},
-            number={"suffix": "%", "font": {"size": 40, "family": "Inter"}, "valueformat": ".0f"},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#94a3b8"},
-                "bar": {"color": "#22c55e" if tasa >= 50 else "#ef4444", "thickness": 0.25},
-                "bgcolor": "white",
-                "borderwidth": 0,
-                "steps": [
-                    {"range": [0, 40],  "color": "#fef2f2"},
-                    {"range": [40, 60], "color": "#fffbeb"},
-                    {"range": [60, 100], "color": "#f0fdf4"},
-                ],
-                "threshold": {"line": {"color": "#0f172a", "width": 2}, "thickness": 0.75, "value": 50},
-            },
-            title={"text": "Tasa de Aprobación", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
-        ))
+        gauge_cfg = {
+            "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#94a3b8"},
+            "bar": {"color": "#22c55e" if tasa >= 50 else "#ef4444", "thickness": 0.25},
+            "bgcolor": "white",
+            "borderwidth": 0,
+            "steps": [
+                {"range": [0, 40],  "color": "#fef2f2"},
+                {"range": [40, 60], "color": "#fffbeb"},
+                {"range": [60, 100], "color": "#f0fdf4"},
+            ],
+            "threshold": {"line": {"color": "#0f172a", "width": 2}, "thickness": 0.75, "value": 50},
+        }
+        # Empieza en 0, anima hasta tasa via frames
+        fig_gauge = go.Figure(
+            data=[go.Indicator(
+                mode="gauge+number+delta",
+                value=0,
+                domain={"x": [0, 1], "y": [0, 1]},
+                delta={"reference": tasa_prev, "suffix": "%", "valueformat": ".0f"},
+                number={"suffix": "%", "font": {"size": 40, "family": "Inter"}, "valueformat": ".0f"},
+                gauge=gauge_cfg,
+                title={"text": "Tasa de Aprobación", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
+            )],
+            frames=[go.Frame(data=[go.Indicator(value=tasa)], name="loaded")],
+        )
         fig_gauge.update_layout(
             height=280, margin=dict(t=40, b=20, l=60, r=60),
             paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter"),
@@ -638,6 +648,46 @@ def render_dashboard(bank_filter: str = None):
                   color:#94a3b8;margin:0 0 0.6rem">💡 Conclusiones</p>
         <ul style="margin:0;padding-left:1.2rem;color:#374151;font-size:0.88rem;line-height:1.9">{items_html}</ul>
     </div>""", unsafe_allow_html=True)
+
+    # ── Contador KPI cards + animación gauge ──
+    components.html("""
+<script>
+(function () {
+    function run() {
+        var doc    = window.parent.document;
+        var Plotly = window.parent.Plotly;
+
+        // 1. Contador en KPI cards
+        doc.querySelectorAll('[data-counter]').forEach(function (el) {
+            if (el.dataset.animated) return;
+            el.dataset.animated = '1';
+            var target = parseFloat(el.getAttribute('data-counter'));
+            var suffix = el.getAttribute('data-suffix') || '';
+            var start  = null;
+            function step(ts) {
+                if (!start) start = ts;
+                var t    = Math.min((ts - start) / 900, 1);
+                var ease = 1 - Math.pow(1 - t, 3);
+                el.textContent = Math.round(target * ease).toLocaleString('es-CL') + suffix;
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+
+        // 2. Animar gauge (primer gráfico Plotly de la página)
+        var plots = doc.querySelectorAll('.js-plotly-plot');
+        if (Plotly && plots.length > 0) {
+            Plotly.animate(plots[0], ['loaded'], {
+                transition: { duration: 1000, easing: 'cubic-in-out' },
+                frame:      { duration: 1000, redraw: true },
+                mode:       'immediate',
+            });
+        }
+    }
+    setTimeout(run, 400);
+})();
+</script>
+""", height=0)
 
     # ── 6. Detalle de registros ──
     _section_header("Detalle de registros")
