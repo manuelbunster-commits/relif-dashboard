@@ -472,7 +472,7 @@ def render_dashboard(bank_filter: str = None):
             title={"text": "Tasa de Aprobación", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
         ))
         fig_gauge.update_layout(
-            height=280, margin=dict(t=40, b=20, l=60, r=60),
+            height=280, margin=dict(t=40, b=40, l=80, r=80),
             paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter"),
         )
         st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
