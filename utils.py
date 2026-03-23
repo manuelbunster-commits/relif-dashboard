@@ -81,12 +81,14 @@ def render_dashboard(bank_filter: str = None):
         unsafe_allow_html=True,
     )
 
-    if bank_filter:
+    if bank_filter == "BCI":
         col_logo, col_title = st.columns([0.3, 5])
         with col_logo:
             st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
         with col_title:
             st.title(bank_filter)
+    elif bank_filter:
+        st.title(f"🏦 {bank_filter}")
     else:
         st.title("🏦 Consolidado")
 
