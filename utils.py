@@ -81,17 +81,16 @@ def render_dashboard(bank_filter: str = None):
         unsafe_allow_html=True,
     )
 
-    hc1, hc2 = st.columns([5, 1])
-    with hc1:
-        if bank_filter:
-            col_logo, col_title = st.columns([0.3, 5])
-            with col_logo:
-                st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
-            with col_title:
-                st.title(bank_filter)
-        else:
-            st.title("🏦 Consolidado")
-    with hc2:
+    if bank_filter:
+        col_logo, col_title = st.columns([0.3, 5])
+        with col_logo:
+            st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
+        with col_title:
+            st.title(bank_filter)
+    else:
+        st.title("🏦 Consolidado")
+
+    with st.sidebar:
         if st.button("🔄 Actualizar", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
