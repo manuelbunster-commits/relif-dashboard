@@ -118,11 +118,13 @@ def _to_abs(values):
 st.markdown(CARD_CSS + ANIM_CSS, unsafe_allow_html=True)
 
 # Header
-col_logo, col_title = st.columns([0.3, 5])
-with col_logo:
-    st.image("https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png", width=80)
-with col_title:
-    st.title("Funnel BCI × Buk")
+st.markdown(
+    '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">'
+    '<img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png" width="80">'
+    '<h1 style="margin:0;font-weight:700;font-size:1.8rem;color:#0f172a;letter-spacing:-0.02em">Funnel BCI × Buk</h1>'
+    '</div>',
+    unsafe_allow_html=True,
+)
 
 # Sidebar
 with st.sidebar:
