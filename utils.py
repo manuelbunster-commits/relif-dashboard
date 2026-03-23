@@ -323,7 +323,10 @@ def render_dashboard(bank_filter: str = None):
         end_date = st.date_input("Hasta", value=date.today() + timedelta(days=1))
 
     delta_days = max((end_date - start_date).days, 1)
-    prev_start = str(start_date - timedelta(days=delta_days))
+    # Retroceder N días hábiles para comparar lunes-viernes vs lunes-viernes
+    bdays_curr = len(pd.bdate_range(str(start_date), str(end_date - timedelta(days=1))))
+    bdays_curr = max(bdays_curr, 1)
+    prev_start = str((pd.Timestamp(start_date) - pd.tseries.offsets.BDay(bdays_curr)).date())
     prev_end   = str(start_date)
 
     with st.spinner("Cargando datos..."):
