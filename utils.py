@@ -86,7 +86,7 @@ def render_dashboard(bank_filter: str = None):
         if bank_filter:
             col_logo, col_title = st.columns([0.3, 5])
             with col_logo:
-                st.image("https://logo.clearbit.com/bci.cl", width=60)
+                st.image("bci_logo.png", width=80)
             with col_title:
                 st.title(bank_filter)
         else:
