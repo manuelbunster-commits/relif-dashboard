@@ -443,7 +443,7 @@ def render_dashboard(bank_filter: str = None):
         color = "green" if tasa >= 50 else "red"
         st.markdown(f"""
         <div class="kpi-card {color}" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.1s;opacity:0">
-            <div class="kpi-label">Tasa de Aprobación</div>
+            <div class="kpi-label">Tasa de Envío al Banco</div>
             <div class="kpi-value" data-counter="{tasa}" data-suffix="%">{tasa}%</div>
             {_trend_arrow(_pct_change(tasa, tasa_prev))}
         </div>""", unsafe_allow_html=True)
@@ -500,7 +500,7 @@ def render_dashboard(bank_filter: str = None):
                 ],
                 "threshold": {"line": {"color": "#0f172a", "width": 2}, "thickness": 0.75, "value": 50},
             },
-            title={"text": "Tasa de Aprobación", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
+            title={"text": "Tasa de Envío al Banco", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
         ))
         fig_gauge.update_layout(
             height=280, margin=dict(t=30, b=20, l=30, r=30),
