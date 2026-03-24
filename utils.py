@@ -168,6 +168,18 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 hr { border: none !important; border-top: 1px solid #e2e8f0 !important; margin: 1.5rem 0 !important; }
 
+/* ── Filtros de fecha sticky ── */
+section.main .block-container [data-testid="stHorizontalBlock"]:first-of-type {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    background: white !important;
+    padding: 8px 0 10px !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07) !important;
+    border-radius: 0 0 12px 12px !important;
+    margin-bottom: 0.5rem !important;
+}
+
 /* ── KPI Cards ── */
 .kpi-card {
     background: white;
@@ -722,9 +734,12 @@ def render_dashboard(bank_filter: str = None):
         _style_status(df_display),
         hide_index=True, use_container_width=True, height=300,
     )
-    st.download_button(
-        label="⬇️ Descargar CSV",
-        data=df_display.to_csv(index=False).encode("utf-8"),
-        file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
-        mime="text/csv",
-    )
+    DOWNLOAD_EMAILS = {"manuelbunster@gmail.com"}  # ← agrega aquí los emails con permiso
+    user_email = getattr(st.experimental_user, "email", None)
+    if user_email in DOWNLOAD_EMAILS:
+        st.download_button(
+            label="⬇️ Descargar CSV",
+            data=df_display.to_csv(index=False).encode("utf-8"),
+            file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
+            mime="text/csv",
+        )
