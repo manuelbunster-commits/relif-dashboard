@@ -722,3 +722,9 @@ def render_dashboard(bank_filter: str = None):
         _style_status(df_display),
         hide_index=True, use_container_width=True, height=300,
     )
+    st.download_button(
+        label="⬇️ Descargar CSV",
+        data=df_display.to_csv(index=False).encode("utf-8"),
+        file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
+        mime="text/csv",
+    )
