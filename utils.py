@@ -135,6 +135,37 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     transform: translateY(-1px) !important;
 }
 
+/* ── Sidebar colapsado: pastilla con "R" de Relif ── */
+[data-testid="stSidebarCollapsedControl"] {
+    width: 48px !important;
+    height: 48px !important;
+    background: linear-gradient(135deg, #0f172a, #1e293b) !important;
+    border-radius: 0 12px 12px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 3px 0 12px rgba(0,0,0,0.2) !important;
+    border: none !important;
+    top: 18px !important;
+    cursor: pointer !important;
+    transition: background 0.2s ease !important;
+}
+[data-testid="stSidebarCollapsedControl"]:hover {
+    background: linear-gradient(135deg, #1e293b, #334155) !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg {
+    display: none !important;
+}
+[data-testid="stSidebarCollapsedControl"]::after {
+    content: "R";
+    color: #f1f5f9;
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
 hr { border: none !important; border-top: 1px solid #e2e8f0 !important; margin: 1.5rem 0 !important; }
 
 /* ── KPI Cards ── */
