@@ -111,59 +111,23 @@ def _load_sheet() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def _debug_sheet(df):
-    with st.expander("🔍 Debug sheet (primeras 3 filas)", expanded=True):
-        st.dataframe(df.head(3))
-
-
-def _find_columns(df: pd.DataFrame, month: str):
-    """Encuentra dinámicamente las columnas de real y ppto para un mes."""
-    # Buscar en las primeras 3 filas del sheet dónde está el mes
-    real_col, ppto_col = None, None
-    in_ppto = False
-    for row_idx in range(min(3, len(df))):
-        row = df.iloc[row_idx].astype(str).str.strip().str.lower()
-        for col_idx, val in enumerate(row):
-            if val == "ppto":
-                in_ppto = True
-            if val == month.lower():
-                if not in_ppto and real_col is None:
-                    real_col = col_idx
-                elif in_ppto and ppto_col is None:
-                    ppto_col = col_idx
-        if real_col and ppto_col:
-            break
-    return real_col, ppto_col
-
-
-def _find_kpi_col(df: pd.DataFrame):
-    """Encuentra la columna donde están los nombres de KPI."""
-    for row_idx in range(min(3, len(df))):
-        row = df.iloc[row_idx].astype(str).str.strip().str.lower()
-        for col_idx, val in enumerate(row):
-            if val == "kpi":
-                return col_idx
-    return 4  # fallback
-
-
 def _get_values(df: pd.DataFrame, month: str):
     """Devuelve (real[], ppto[]) para el mes dado. None si no hay datos."""
     if df.empty:
         return None, None
-    kpi_col  = _find_kpi_col(df)
-    real_col, ppto_col = _find_columns(df, month)
-    if real_col is None:
-        return None, None
+    m_idx    = MONTHS.index(month)
+    real_col = 7  + m_idx
+    ppto_col = 20 + m_idx
     reals, pptos = [], []
     for stage in STAGES:
-        mask = df.iloc[:, kpi_col].astype(str).str.strip() == stage["kpi"]
+        mask = df.iloc[:, 6].astype(str).str.strip() == stage["kpi"]
         rows = df[mask]
         if rows.empty:
             reals.append(None); pptos.append(None)
         else:
             row = rows.iloc[0]
             reals.append(_parse(row.iloc[real_col]))
-            pptos.append(_parse(row.iloc[ppto_col]) if ppto_col else None)
+            pptos.append(_parse(row.iloc[ppto_col]))
     return reals, pptos
 
 
@@ -212,7 +176,6 @@ with st.sidebar:
 # Cargar sheet
 with st.spinner("Cargando datos..."):
     df_sheet = _load_sheet()
-    _debug_sheet(df_sheet)
 
 real_raw, ppto_raw = _get_values(df_sheet, sel_month)
 has_real = real_raw and any(v not in (None, 0) for v in real_raw)
