@@ -1,0 +1,16 @@
+# Archivos solo locales - no publicar en GitHub
+Acumulado.py
+utils_v2.py
+banco_internacional.png
+pages/2_Banco_Internacional.py
+pages/3_Funnel_BCI.py
+pages/99_Prueba.py
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+*.egg-info/
+
+# OS
+.DS_Store
