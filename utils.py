@@ -568,7 +568,7 @@ def render_dashboard(bank_filter: str = None):
             st.rerun()
         st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
         comparar          = False  # desactivado
-        alerta_threshold  = 101  # desactivado
+        alerta_threshold  = 999  # desactivado
 
     # ── Header ──
     if bank_filter == "BCI":
