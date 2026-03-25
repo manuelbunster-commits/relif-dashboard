@@ -176,7 +176,10 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
-    sel_month  = st.selectbox("Mes", MONTHS, index=0)
+    from datetime import date
+    _current_month = date.today().strftime("%b-%y").lower().replace(".", "")
+    _default_idx = MONTHS.index(_current_month) if _current_month in MONTHS else 0
+    sel_month  = st.selectbox("Mes", MONTHS, index=_default_idx)
     usar_mock  = st.toggle("📊 Datos de ejemplo", value=True)
 
 # Cargar sheet
