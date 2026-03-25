@@ -127,6 +127,22 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 /* ── Ocultar navegación nativa de Streamlit ── */
 [data-testid="stSidebarNav"] { display: none !important; }
 
+/* ── st.page_link en sidebar: sin fondo azul, estilo link limpio ── */
+[data-testid="stSidebar"] [data-testid="stPageLink"] a,
+[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.2rem 0 !important;
+    color: #cbd5e1 !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+    color: #f1f5f9 !important;
+}
+
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
@@ -510,7 +526,7 @@ def render_dashboard(bank_filter: str = None):
             )
         _all_nav = [
             ("🏦",     "Consolidado",        "Acumulado.py",                   None,       None),
-            (_bci_b64, "BCI",                "pages/1_BCI.py",                 "filter:brightness(0) invert(1);opacity:0.85", "24px"),
+            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None, "32px"),
             (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,       "13px"),
         ]
         _base = Path(__file__).parent
