@@ -12,8 +12,8 @@ from utils import CARD_CSS
 st.set_page_config(page_title="Funnel BCI", page_icon="https://relif.com/favicon.png", layout="wide")
 
 # ── Constantes ───────────────────────────────────────────────────────
-SHEET_ID  = "1dtpkt9O1OxBe93-IS7gGtV5yd9zObiwv"
-GID       = "1581819693"
+SHEET_ID  = "1Pkm4kX6dRRH0_Ar759E3ynKevK69WgTl"
+GID       = "815440498"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
 
 MONTHS = ["feb-26","mar-26","abr-26","may-26","jun-26",
@@ -95,10 +95,16 @@ def _section_header(title: str):
 
 
 def _parse(v):
-    if pd.isna(v) or str(v).strip() in ("", "-"):
+    if pd.isna(v) or str(v).strip() in ("", "-", "N/A", "n/a"):
         return None
     try:
-        return float(str(v).strip().replace(",", "").replace("%", ""))
+        s = str(v).strip().replace("%", "").replace(" ", "")
+        # Formato chileno: punto = separador de miles, coma = decimal
+        if "," in s:
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            s = s.replace(".", "")
+        return float(s)
     except Exception:
         return None
 
@@ -116,11 +122,11 @@ def _get_values(df: pd.DataFrame, month: str):
     if df.empty:
         return None, None
     m_idx    = MONTHS.index(month)
-    real_col = 7  + m_idx
-    ppto_col = 20 + m_idx
+    real_col = 9  + m_idx
+    ppto_col = 22 + m_idx
     reals, pptos = [], []
     for stage in STAGES:
-        mask = df.iloc[:, 6].astype(str).str.strip() == stage["kpi"]
+        mask = df.iloc[:, 8].astype(str).str.strip() == stage["kpi"]
         rows = df[mask]
         if rows.empty:
             reals.append(None); pptos.append(None)
