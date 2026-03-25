@@ -128,18 +128,25 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stSidebarNav"] { display: none !important; }
 
 /* ── st.page_link en sidebar: sin fondo azul, estilo link limpio ── */
-[data-testid="stSidebar"] [data-testid="stPageLink"] a,
-[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+[data-testid="stSidebar"] [data-testid="stPageLink"],
+[data-testid="stSidebar"] [data-testid="stPageLink"] > div,
+[data-testid="stSidebar"] [data-testid="stPageLink"] a {
     background: transparent !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0.2rem 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     color: #cbd5e1 !important;
     font-size: 0.9rem !important;
     font-weight: 500 !important;
     text-decoration: none !important;
+    border-radius: 0 !important;
 }
-[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover,
+[data-testid="stSidebar"] [data-testid="stPageLink"] a:focus {
+    background: transparent !important;
+    background-color: transparent !important;
     color: #f1f5f9 !important;
 }
 
