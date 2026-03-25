@@ -1008,7 +1008,7 @@ def render_dashboard(bank_filter: str = None):
     </div>"""
     st.markdown(table_html, unsafe_allow_html=True)
     DOWNLOAD_EMAILS = {"manuelbunster@gmail.com"}  # ← agrega aquí los emails con permiso
-    user_email = getattr(st.experimental_user, "email", None)
+    user_email = getattr(getattr(st, "experimental_user", None), "email", None)
     if user_email in DOWNLOAD_EMAILS:
         st.download_button(
             label="⬇️ Descargar CSV",
