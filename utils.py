@@ -521,42 +521,38 @@ def render_dashboard(bank_filter: str = None):
             f"</div>",
             unsafe_allow_html=True,
         )
-        # Navegación
+        # Navegación — solo si hay más de una página disponible
         _base = Path(__file__).parent
-        _all_nav_check = ["Acumulado.py", "pages/1_BCI.py", "pages/2_Banco_Internacional.py"]
-        _visible_count = sum(1 for p in _all_nav_check if (_base / p).exists())
-        if _visible_count > 1:
+        _all_nav = [
+            ("🏦",     "Consolidado",        "Acumulado.py",                   None,    None),
+            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None,    "32px"),
+            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,    "13px"),
+        ]
+        nav_pages = [(l, lbl, p, f, h) for l, lbl, p, f, h in _all_nav if (_base / p).exists()]
+        if len(nav_pages) > 1:
             st.markdown(
                 "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
                 "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
                 unsafe_allow_html=True,
             )
-        _all_nav = [
-            ("🏦",     "Consolidado",        "Acumulado.py",                   None,       None),
-            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None, "32px"),
-            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,       "13px"),
-        ]
-        _base = Path(__file__).parent
-        nav_pages = [(l, lbl, p, f, h) for l, lbl, p, f, h in _all_nav if (_base / p).exists()]
-        for logo, label, page_file, img_filter, img_h in nav_pages:
-            c1, c2 = st.columns([1, 5])
-            with c1:
-                if logo and logo not in ("🏦",):
-                    wrap_style = "" if img_filter else "display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px;"
-                    filt = f"filter:{img_filter};" if img_filter else ""
-                    st.markdown(
-                        f'<div style="padding-top:4px;{wrap_style}">'
-                        f'<img src="data:image/png;base64,{logo}" style="height:{img_h};{filt}"></div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(f"<div style='padding-top:6px;font-size:1rem'>{logo}</div>", unsafe_allow_html=True)
-            with c2:
-                try:
-                    st.page_link(page_file, label=label)
-                except Exception:
-                    if st.button(label, key=f"nav_{label}"):
-                        st.switch_page(page_file)
+            for logo, label, page_file, img_filter, img_h in nav_pages:
+                c1, c2 = st.columns([1, 5])
+                with c1:
+                    if logo and logo not in ("🏦",):
+                        wrap_style = "display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px;"
+                        st.markdown(
+                            f'<div style="padding-top:4px;{wrap_style}">'
+                            f'<img src="data:image/png;base64,{logo}" style="height:{img_h}"></div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(f"<div style='padding-top:6px;font-size:1rem'>{logo}</div>", unsafe_allow_html=True)
+                with c2:
+                    try:
+                        st.page_link(page_file, label=label)
+                    except Exception:
+                        if st.button(label, key=f"nav_{label}"):
+                            st.switch_page(page_file)
         st.markdown(
             "<hr style='border:none;border-top:1px solid #1e293b;margin:1rem 0 0.8rem'>",
             unsafe_allow_html=True,
