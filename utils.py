@@ -504,32 +504,30 @@ def render_dashboard(bank_filter: str = None):
             "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
             unsafe_allow_html=True,
         )
-        # Consolidado
-        c1, c2 = st.columns([1, 5])
-        with c1:
-            st.markdown("<div style='padding-top:6px;font-size:1rem'>🏦</div>", unsafe_allow_html=True)
-        with c2:
-            st.page_link("Acumulado.py", label="Consolidado")
-
-        # BCI
-        c1, c2 = st.columns([1, 5])
-        with c1:
-            if _bci_b64:
-                st.markdown(f'<div style="padding-top:4px"><img src="data:image/png;base64,{_bci_b64}" style="height:24px;filter:brightness(0) invert(1);opacity:0.85"></div>', unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='padding-top:6px'>🔵</div>", unsafe_allow_html=True)
-        with c2:
-            st.page_link("pages/1_BCI.py", label="BCI")
-
-        # Banco Internacional
-        c1, c2 = st.columns([1, 5])
-        with c1:
-            if _bi_b64:
-                st.markdown(f'<div style="padding-top:5px;display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px"><img src="data:image/png;base64,{_bi_b64}" style="height:13px"></div>', unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='padding-top:6px'>🏛️</div>", unsafe_allow_html=True)
-        with c2:
-            st.page_link("pages/2_Banco_Internacional.py", label="Banco Internacional")
+        nav_pages = [
+            ("🏦",     "Consolidado",        "Acumulado.py",                   None,       None),
+            (_bci_b64, "BCI",                "pages/1_BCI.py",                 "filter:brightness(0) invert(1);opacity:0.85", "24px"),
+            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,       "13px"),
+        ]
+        for logo, label, page_file, img_filter, img_h in nav_pages:
+            c1, c2 = st.columns([1, 5])
+            with c1:
+                if logo and logo not in ("🏦",):
+                    wrap_style = "" if img_filter else "display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px;"
+                    filt = f"filter:{img_filter};" if img_filter else ""
+                    st.markdown(
+                        f'<div style="padding-top:4px;{wrap_style}">'
+                        f'<img src="data:image/png;base64,{logo}" style="height:{img_h};{filt}"></div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(f"<div style='padding-top:6px;font-size:1rem'>{logo}</div>", unsafe_allow_html=True)
+            with c2:
+                try:
+                    st.page_link(page_file, label=label)
+                except Exception:
+                    if st.button(label, key=f"nav_{label}"):
+                        st.switch_page(page_file)
         st.markdown(
             "<hr style='border:none;border-top:1px solid #1e293b;margin:1rem 0 0.8rem'>",
             unsafe_allow_html=True,
