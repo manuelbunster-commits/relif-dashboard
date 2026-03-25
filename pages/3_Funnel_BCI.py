@@ -111,6 +111,11 @@ def _load_sheet() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def _debug_sheet(df):
+    with st.expander("🔍 Debug sheet (primeras 3 filas)", expanded=True):
+        st.dataframe(df.head(3))
+
+
 def _find_columns(df: pd.DataFrame, month: str):
     """Encuentra dinámicamente las columnas de real y ppto para un mes."""
     # Buscar en las primeras 3 filas del sheet dónde está el mes
@@ -207,6 +212,7 @@ with st.sidebar:
 # Cargar sheet
 with st.spinner("Cargando datos..."):
     df_sheet = _load_sheet()
+    _debug_sheet(df_sheet)
 
 real_raw, ppto_raw = _get_values(df_sheet, sel_month)
 has_real = real_raw and any(v not in (None, 0) for v in real_raw)
