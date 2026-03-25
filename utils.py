@@ -567,7 +567,7 @@ def render_dashboard(bank_filter: str = None):
             st.cache_data.clear()
             st.rerun()
         st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
-        comparar          = st.toggle("⚖️ Modo comparación", value=False)
+        comparar          = False  # desactivado
         alerta_threshold  = 101  # desactivado
 
     # ── Header ──
