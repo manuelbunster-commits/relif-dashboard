@@ -1,7 +1,10 @@
 """Funciones compartidas entre páginas del dashboard — versión v2 (diseño mejorado)."""
 
+import base64
+import math
 import os
 from datetime import date, timedelta, datetime
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -85,11 +88,15 @@ CARD_CSS = """
 
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
+/* Fondo gris muy suave para que las cards blancas "floten" */
+.stApp, section.main { background: #f1f5f9 !important; }
+
 .block-container {
-    padding-top: 1.8rem;
-    padding-left: 2.5rem;
-    padding-right: 2.5rem;
+    padding-top: 0 !important;
+    padding-left: 2rem;
+    padding-right: 2rem;
     animation: pageLoad 0.5s ease-out;
+    max-width: 1200px;
 }
 @keyframes pageLoad {
     from { opacity: 0; transform: translateY(14px); }
@@ -116,6 +123,9 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     font-weight: 700 !important;
     color: #0f172a !important;
 }
+
+/* ── Ocultar navegación nativa de Streamlit ── */
+[data-testid="stSidebarNav"] { display: none !important; }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
@@ -184,18 +194,38 @@ section.main .block-container [data-testid="stHorizontalBlock"]:first-of-type {
 .kpi-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-left: 4px solid #3b82f6;
-    border-radius: 14px;
-    padding: 1.1rem 1.3rem 0.6rem;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    border-radius: 16px;
+    padding: 1.3rem 1.4rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.kpi-card.green  { border-left-color: #22c55e; }
-.kpi-card.red    { border-left-color: #ef4444; }
-.kpi-card.blue   { border-left-color: #3b82f6; }
-.kpi-card.purple { border-left-color: #8b5cf6; }
-.kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; margin-bottom: 0.2rem; }
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.07);
+}
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+}
+.kpi-card.blue::before   { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+.kpi-card.green::before  { background: linear-gradient(90deg,#22c55e,#4ade80); }
+.kpi-card.red::before    { background: linear-gradient(90deg,#ef4444,#f87171); }
+.kpi-card.purple::before { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }
+.kpi-icon {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    line-height: 1;
+}
+.kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; margin-bottom: 0.25rem; }
 .kpi-value {
-    font-size: 2rem; font-weight: 700; color: #0f172a; line-height: 1.1;
+    font-size: 2.1rem; font-weight: 800; color: #0f172a; line-height: 1.05;
+    letter-spacing: -0.02em;
     animation: countUp 0.6s ease-out;
 }
 @keyframes countUp {
@@ -206,10 +236,44 @@ section.main .block-container [data-testid="stHorizontalBlock"]:first-of-type {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-.kpi-delta { font-size: 0.75rem; font-weight: 500; margin-top: 0.2rem; }
+.kpi-delta { font-size: 0.75rem; font-weight: 500; margin-top: 0.3rem; }
 .kpi-delta.up      { color: #22c55e; }
 .kpi-delta.down    { color: #ef4444; }
 .kpi-delta.neutral { color: #94a3b8; }
+
+/* ── Chart cards — envuelve automáticamente los gráficos Plotly ── */
+[data-testid="stPlotlyChart"] {
+    background: white !important;
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.05) !important;
+    padding: 0.8rem 0.8rem 0 !important;
+    overflow: hidden !important;
+}
+
+/* ── DataFrame cards ── */
+[data-testid="stDataFrame"], [data-testid="stDataFrameResizable"] {
+    background: white !important;
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.05) !important;
+    overflow: hidden !important;
+}
+
+/* ── Tabla de detalle con badges ── */
+.detail-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.detail-table th {
+    background:#f8fafc; color:#64748b; font-size:0.65rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.07em;
+    padding:0.7rem 1rem; border-bottom:1px solid #e2e8f0; text-align:left;
+}
+.detail-table td { padding:0.65rem 1rem; border-bottom:1px solid #f1f5f9; color:#0f172a; vertical-align:middle; }
+.detail-table tr:last-child td { border-bottom:none; }
+.detail-table tr:hover td { background:#f8fafc; }
+.status-badge {
+    display:inline-block; padding:3px 10px; border-radius:999px;
+    font-size:0.72rem; font-weight:600; line-height:1.4;
+}
 
 /* ── Alert banner ── */
 .alert-banner {
@@ -255,10 +319,12 @@ def get_token() -> str:
 def fetch_data(start: str, end: str) -> pd.DataFrame:
     token = get_token()
     query = f"""
-        SELECT *
+        SELECT "BankOfferRequests".*, "Clients"."id" as "clientId", "Clients"."rut", "Clients"."source"
         FROM "BankOfferRequests"
-        WHERE "createdAt" >= '{start}'
-          AND "createdAt" <  '{end}'
+        LEFT JOIN "Clients" ON "BankOfferRequests"."rut" = "Clients"."rut"
+          AND "Clients"."businessUnitId" = 73
+        WHERE "BankOfferRequests"."createdAt" >= '{start}'
+          AND "BankOfferRequests"."createdAt" <  '{end}'
     """
     resp = requests.post(
         RELIF_EXECUTE_URL,
@@ -279,6 +345,7 @@ def fetch_data(start: str, end: str) -> pd.DataFrame:
             "bank":      r.get("bank"),
             "status":    r.get("status"),
             "rut":       r.get("rut"),
+            "source":    r.get("source"),
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         })
@@ -306,14 +373,82 @@ def _pct_change(curr, prev):
     return round((curr - prev) / prev * 100)
 
 
-def _section_header(title: str):
+def _section_header(title: str, icon: str = ""):
     """Separador estilizado con línea horizontal y título a la izquierda."""
+    icon_html = f'<span style="font-size:0.9rem;line-height:1">{icon}</span>' if icon else ""
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:0.8rem;margin:1.8rem 0 1rem">
-        <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
-                     letter-spacing:0.1em;color:#94a3b8;white-space:nowrap">{title}</span>
-        <div style="flex:1;height:1px;background:#e2e8f0"></div>
+    <div style="display:flex;align-items:center;gap:0.7rem;margin:2rem 0 1rem">
+        {icon_html}
+        <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;
+                     letter-spacing:0.1em;color:#64748b;white-space:nowrap">{title}</span>
+        <div style="flex:1;height:1px;background:linear-gradient(90deg,#e2e8f0,transparent)"></div>
     </div>""", unsafe_allow_html=True)
+
+
+def _ring_svg(tasa: int, tasa_prev: int) -> str:
+    """Anillo circular de progreso, estilo moderno (Apple Watch / Linear)."""
+    cx, cy, r, sw = 110, 110, 80, 14
+    circ = round(2 * math.pi * r, 2)           # circunferencia total
+    filled = round(circ * max(0, min(tasa, 100)) / 100, 2)
+    gap    = round(circ - filled, 2)
+    # stroke-dashoffset = circ/4 para que el arco empiece arriba (−90°)
+    offset = round(circ / 4, 2)
+
+    color = "#22c55e" if tasa >= 50 else "#ef4444"
+    color_bg = f"{color}18"   # tint muy suave para el fondo del card
+
+    delta = tasa - tasa_prev
+    if delta > 0:
+        delta_str, delta_color = f"▲ {delta}pts", "#22c55e"
+    elif delta < 0:
+        delta_str, delta_color = f"▼ {abs(delta)}pts", "#ef4444"
+    else:
+        delta_str, delta_color = "—", "#94a3b8"
+
+    period_label = "vs período anterior"
+
+    return (
+        f'<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;'
+        f'box-shadow:0 1px 3px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.05);'
+        f'padding:1.4rem 1rem 1.2rem;display:flex;flex-direction:column;align-items:center">'
+
+        # ── Título ──
+        f'<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;'
+        f'letter-spacing:0.1em;color:#94a3b8;margin:0 0 1rem;text-align:center">'
+        f'Tasa de Envío al Banco</p>'
+
+        # ── Anillo SVG ──
+        f'<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">'
+
+        # Fondo suave dentro del anillo
+        f'<circle cx="{cx}" cy="{cy}" r="{r-sw//2-2}" fill="{color_bg}"/>'
+
+        # Pista gris
+        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#f0f4f8" stroke-width="{sw}"/>'
+
+        # Arco de valor
+        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="{sw}" '
+        f'stroke-linecap="round" '
+        f'stroke-dasharray="{filled} {gap}" stroke-dashoffset="{offset}" '
+        f'style="transition:stroke-dasharray 0.6s ease"/>'
+
+        # Número central grande
+        f'<text x="{cx}" y="{cy-14}" text-anchor="middle" dominant-baseline="middle" '
+        f'font-family="Inter,sans-serif" font-size="28" font-weight="800" '
+        f'fill="#0f172a" letter-spacing="-1">{tasa}%</text>'
+
+        # Delta pequeño debajo del número
+        f'<text x="{cx}" y="{cy+12}" text-anchor="middle" '
+        f'font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="{delta_color}">'
+        f'{delta_str}</text>'
+
+        f'<text x="{cx}" y="{cy+28}" text-anchor="middle" '
+        f'font-family="Inter,sans-serif" font-size="11" fill="#94a3b8">'
+        f'{period_label}</text>'
+
+        f'</svg>'
+        f'</div>'
+    )
 
 
 def _style_status(df: pd.DataFrame):
@@ -333,35 +468,114 @@ def render_dashboard(bank_filter: str = None):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
+    # ── Logos base64 (usados en sidebar y header) ──
+    _logo_path = Path(__file__).parent / "relif-logo-DkXo5dGJ.png"
+    _logo_b64 = base64.b64encode(_logo_path.read_bytes()).decode() if _logo_path.exists() else ""
+
+    _bci_path = Path(__file__).parent / "bci_logo.png"
+    _bci_b64  = base64.b64encode(_bci_path.read_bytes()).decode() if _bci_path.exists() else ""
+
+    _bi_path = Path(__file__).parent / "banco_internacional.png"
+    _bi_b64  = base64.b64encode(_bi_path.read_bytes()).decode() if _bi_path.exists() else ""
+    _logo_img = (
+        f'<img src="data:image/png;base64,{_logo_b64}" '
+        f'style="height:36px;filter:brightness(0) invert(1);opacity:0.92">'
+        if _logo_b64 else
+        '<span style="font-size:1.1rem;font-weight:800;color:white">RELIF</span>'
+    )
+
     # ── Sidebar ──
     with st.sidebar:
+        # Logo / branding
         st.markdown(
-            "<div style='text-align:center;padding:1rem 0 0.5rem'>"
-            "<span style='font-size:1.1rem;font-weight:700;color:#f1f5f9;letter-spacing:0.05em'>RELIF</span>"
-            "<span style='font-size:0.7rem;color:#64748b;display:block;margin-top:2px'>Dashboard</span>"
-            "</div><hr style='border-color:#1e293b;margin:0.5rem 0 1rem'>",
+            f"<div style='text-align:center;padding:1.6rem 0 1.2rem'>"
+            f"<div style='display:inline-flex;align-items:center;justify-content:center;"
+            f"padding:0.6rem 1rem;background:rgba(255,255,255,0.06);border-radius:12px;"
+            f"border:1px solid rgba(255,255,255,0.08);margin-bottom:0.5rem'>"
+            f"{_logo_img}</div>"
+            f"<div style='font-size:0.6rem;color:#475569;margin-top:4px;text-transform:uppercase;"
+            f"letter-spacing:0.12em'>Analytics</div>"
+            f"</div>",
             unsafe_allow_html=True,
         )
-        if st.button("🔄 Actualizar", use_container_width=True):
+        # Navegación
+        st.markdown(
+            "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
+            "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
+            unsafe_allow_html=True,
+        )
+        # Consolidado
+        c1, c2 = st.columns([1, 5])
+        with c1:
+            st.markdown("<div style='padding-top:6px;font-size:1rem'>🏦</div>", unsafe_allow_html=True)
+        with c2:
+            st.page_link("Acumulado.py", label="Consolidado")
+
+        # BCI
+        c1, c2 = st.columns([1, 5])
+        with c1:
+            if _bci_b64:
+                st.markdown(f'<div style="padding-top:4px"><img src="data:image/png;base64,{_bci_b64}" style="height:24px;filter:brightness(0) invert(1);opacity:0.85"></div>', unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='padding-top:6px'>🔵</div>", unsafe_allow_html=True)
+        with c2:
+            st.page_link("pages/1_BCI.py", label="BCI")
+
+        # Banco Internacional
+        c1, c2 = st.columns([1, 5])
+        with c1:
+            if _bi_b64:
+                st.markdown(f'<div style="padding-top:5px;display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px"><img src="data:image/png;base64,{_bi_b64}" style="height:13px"></div>', unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='padding-top:6px'>🏛️</div>", unsafe_allow_html=True)
+        with c2:
+            st.page_link("pages/2_Banco_Internacional.py", label="Banco Internacional")
+        st.markdown(
+            "<hr style='border:none;border-top:1px solid #1e293b;margin:1rem 0 0.8rem'>",
+            unsafe_allow_html=True,
+        )
+        # Controles
+        st.markdown(
+            "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
+            "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Controles</div>",
+            unsafe_allow_html=True,
+        )
+        if st.button("🔄 Actualizar datos", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
         comparar          = st.toggle("⚖️ Modo comparación", value=False)
         alerta_threshold  = st.slider("🚨 Alerta rechazo >", 0, 100, 60, step=5, format="%d%%")
 
     # ── Header ──
     if bank_filter == "BCI":
-        st.markdown(
-            '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">'
-            '<img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png" width="80">'
-            '<h1 style="margin:0;font-weight:700;font-size:1.8rem;color:#0f172a;letter-spacing:-0.02em">BCI</h1>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+        title_text = "BCI"
+        subtitle_text = "Banco de Crédito e Inversiones"
     elif bank_filter:
-        st.title(f"🏦 {bank_filter}")
+        title_text = bank_filter
+        subtitle_text = "Panel de operaciones"
     else:
-        st.title("🏦 Consolidado")
+        title_text = "Consolidado"
+        subtitle_text = "Todos los bancos"
+
+    # Logo para el header (más grande)
+    _logo_html = (
+        f'<img src="data:image/png;base64,{_logo_b64}" style="height:52px;filter:brightness(0) invert(1);opacity:0.95">'
+        if _logo_b64 else ""
+    )
+
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1d4ed8 100%);
+                border-radius:0 0 20px 20px;padding:2.4rem 2.5rem 2.2rem;
+                margin:-1rem -2rem 1.5rem;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-30px;right:-30px;width:200px;height:200px;
+                    background:rgba(255,255,255,0.04);border-radius:50%"></div>
+        <div style="position:absolute;bottom:-50px;right:80px;width:130px;height:130px;
+                    background:rgba(255,255,255,0.03);border-radius:50%"></div>
+        <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-end">
+            {_logo_html}
+        </div>
+    </div>""", unsafe_allow_html=True)
 
     subtitle_ph = st.empty()  # subtítulo con período + conteo
 
@@ -447,6 +661,7 @@ def render_dashboard(bank_filter: str = None):
     with k1:
         st.markdown(f"""
         <div class="kpi-card blue" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0s;opacity:0">
+            <span class="kpi-icon">📋</span>
             <div class="kpi-label">Total Requests</div>
             <div class="kpi-value" data-counter="{total_curr}">{total_curr}</div>
             {_trend_arrow(pct_total)}
@@ -455,6 +670,7 @@ def render_dashboard(bank_filter: str = None):
         color = "green" if tasa >= 50 else "red"
         st.markdown(f"""
         <div class="kpi-card {color}" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.1s;opacity:0">
+            <span class="kpi-icon">🏦</span>
             <div class="kpi-label">Tasa de Envío al Banco</div>
             <div class="kpi-value" data-counter="{tasa}" data-suffix="%">{tasa}%</div>
             {_trend_arrow(_pct_change(tasa, tasa_prev))}
@@ -462,6 +678,7 @@ def render_dashboard(bank_filter: str = None):
     with k3:
         st.markdown(f"""
         <div class="kpi-card green" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.2s;opacity:0">
+            <span class="kpi-icon">✅</span>
             <div class="kpi-label">Enviadas al banco</div>
             <div class="kpi-value" data-counter="{env_curr}">{env_curr}</div>
             {_trend_arrow(pct_env)}
@@ -469,6 +686,7 @@ def render_dashboard(bank_filter: str = None):
     with k4:
         st.markdown(f"""
         <div class="kpi-card red" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.3s;opacity:0">
+            <span class="kpi-icon">❌</span>
             <div class="kpi-label">Rechazadas</div>
             <div class="kpi-value" data-counter="{rec_curr}">{rec_curr}</div>
             {_trend_arrow(-pct_rec)}
@@ -491,37 +709,45 @@ def render_dashboard(bank_filter: str = None):
             st.metric("Enviadas", env_prev)
             st.metric("Rechazadas", rec_prev)
 
-    # ── Gauge ──
-    _, gauge_col, _ = st.columns([1, 2, 1])
+    # ── Gauge + contexto ──
+    gauge_col, ctx_col = st.columns([3, 2])
     with gauge_col:
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
-            value=tasa,
-            domain={"x": [0, 1], "y": [0, 1]},
-            delta={"reference": tasa_prev, "suffix": "%", "valueformat": ".0f"},
-            number={"suffix": "%", "font": {"size": 40, "family": "Inter"}, "valueformat": ".0f"},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#94a3b8"},
-                "bar": {"color": "#22c55e" if tasa >= 50 else "#ef4444", "thickness": 0.25},
-                "bgcolor": "white",
-                "borderwidth": 0,
-                "steps": [
-                    {"range": [0, 40],  "color": "#fef2f2"},
-                    {"range": [40, 60], "color": "#fffbeb"},
-                    {"range": [60, 100], "color": "#f0fdf4"},
-                ],
-                "threshold": {"line": {"color": "#0f172a", "width": 2}, "thickness": 0.75, "value": 50},
-            },
-            title={"text": "Tasa de Envío al Banco", "font": {"size": 14, "family": "Inter", "color": "#94a3b8"}},
-        ))
-        fig_gauge.update_layout(
-            height=280, margin=dict(t=30, b=20, l=30, r=30),
-            paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter"),
+        st.markdown(_ring_svg(tasa, tasa_prev), unsafe_allow_html=True)
+
+    with ctx_col:
+        by_bank = df_raw.groupby("bank").agg(
+            total=("status", "count"),
+            enviadas=("status", lambda x: (x == "sent_to_bank").sum()),
+        ).sort_values("total", ascending=False).reset_index()
+
+        rows_html = ""
+        for _, brow in by_bank.iterrows():
+            b_tasa = round(brow["enviadas"] / brow["total"] * 100) if brow["total"] else 0
+            bar_color = "#22c55e" if b_tasa >= 50 else "#ef4444"
+            rows_html += (
+                f'<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:0.75rem 1rem;margin-bottom:0.5rem">'
+                f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.4rem">'
+                f'<span style="font-size:0.82rem;font-weight:700;color:#0f172a">{brow["bank"]}</span>'
+                f'<span style="font-size:0.75rem;font-weight:600;color:{bar_color}">{b_tasa}% envío</span>'
+                f'</div>'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">'
+                f'<span style="font-size:0.7rem;color:#64748b">{int(brow["total"])} requests · {int(brow["enviadas"])} enviadas</span>'
+                f'</div>'
+                f'<div style="background:#f1f5f9;border-radius:999px;height:5px;overflow:hidden">'
+                f'<div style="width:{b_tasa}%;height:100%;background:{bar_color};border-radius:999px;transition:width 0.6s ease"></div>'
+                f'</div>'
+                f'</div>'
+            )
+        st.markdown(
+            f'<div style="padding-top:1.2rem">'
+            f'<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0 0 0.8rem">Comparación por banco</p>'
+            f'{rows_html}'
+            f'</div>',
+            unsafe_allow_html=True,
         )
-        st.plotly_chart(fig_gauge, use_container_width=True, config={"displayModeBar": False})
 
     # ── 2. Actividad reciente ──
-    _section_header("Actividad reciente")
+    _section_header("Actividad reciente", "⚡")
     ultimos = df_raw.sort_values("createdAt", ascending=False).head(5)
     for _, row in ultimos.iterrows():
         status = row["status"]
@@ -541,7 +767,7 @@ def render_dashboard(bank_filter: str = None):
         """, unsafe_allow_html=True)
 
     # ── 3. Análisis temporal ──
-    _section_header("Análisis temporal")
+    _section_header("Análisis temporal", "📈")
     gb1, gb2 = st.columns(2)
     with gb1:
         banks2 = ["Todos"] + sorted(df_raw["bank"].dropna().unique().tolist())
@@ -554,7 +780,7 @@ def render_dashboard(bank_filter: str = None):
     if sel_b2 != "Todos": df_g = df_g[df_g["bank"]   == sel_b2]
     if sel_s2 != "Todos": df_g = df_g[df_g["status"] == sel_s2]
 
-    st.caption("Requests por día + tendencia")
+    st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0.5rem 0 0.3rem">Requests por día + tendencia</p>', unsafe_allow_html=True)
     by_day = df_g.groupby("date").size().reset_index(name="Count")
     by_day["Tendencia"] = by_day["Count"].rolling(window=3, min_periods=1).mean()
 
@@ -571,64 +797,58 @@ def render_dashboard(bank_filter: str = None):
     )
     st.plotly_chart(fig_combo, use_container_width=True)
 
-    st.caption("Por banco y status (%)")
-    by_bs = df_raw.groupby(["bank", "status"]).size().reset_index(name="count")
-    totals = by_bs.groupby("bank")["count"].transform("sum")
-    by_bs["pct"] = by_bs["count"] / totals
-    by_bs["status_label"] = by_bs["status"].map(STATUS_LABELS).fillna(by_bs["status"])
-    fig_bar = px.bar(
-        by_bs, x="pct", y="bank", color="status_label", orientation="h",
-        color_discrete_map={v: STATUS_COLORS[k] for k, v in STATUS_LABELS.items()}, barmode="stack",
-    )
-    fig_bar.update_traces(marker_line_width=0)
-    fig_bar.update_layout(
-        margin=dict(t=10, b=10), height=260, xaxis_tickformat=".0%", xaxis_title="", yaxis_title="",
-        plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(gridcolor="#f1f5f9", zeroline=False), yaxis=dict(showgrid=False),
-        legend_title="", font=dict(family="Inter"),
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
 
     # ── 4. Resumen ──
-    _section_header("Resumen")
-    t1, t2, pie_col = st.columns(3)
+    _section_header("Resumen", "📊")
+    t1, t2, rank_col = st.columns(3)
     with t1:
-        st.caption("Por banco")
+        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por banco</p>', unsafe_allow_html=True)
         st.dataframe(
             df_raw.groupby("bank").size().reset_index(name="Count").sort_values("Count", ascending=False),
             hide_index=True, use_container_width=True, height=160,
         )
     with t2:
-        st.caption("Por status")
+        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por status</p>', unsafe_allow_html=True)
         st.dataframe(
             df_raw.groupby("status").size().reset_index(name="Count").sort_values("Count", ascending=False),
             hide_index=True, use_container_width=True, height=160,
         )
-    with pie_col:
-        st.caption("Distribución por status")
-        sc = df_raw["status"].value_counts().reset_index()
-        sc.columns = ["status", "count"]
-        sc["label"] = sc["status"].map(STATUS_LABELS).fillna(sc["status"])
-        fig_pie = px.pie(
-            sc, names="label", values="count", color="label",
-            color_discrete_map={v: STATUS_COLORS[k] for k, v in STATUS_LABELS.items()},
-            hole=0.55,
-        )
-        fig_pie.update_traces(
-            textposition="outside",
-            textinfo="percent+label",
-            textfont=dict(size=11, family="Inter"),
-            marker=dict(line=dict(color="white", width=2)),
-        )
-        fig_pie.update_layout(
-            margin=dict(t=10, b=10, l=10, r=10), height=160,
-            showlegend=False, paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter"),
-        )
-        st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+    with rank_col:
+        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Top empresas</p>', unsafe_allow_html=True)
+        df_src = df_raw[df_raw["source"].notna() & (df_raw["source"] != "")].copy()
+        if df_src.empty:
+            st.caption("Sin datos de empresa")
+        else:
+            rank = df_src.groupby("source").agg(
+                leads=("id", "count"),
+                enviadas=("status", lambda x: (x == "sent_to_bank").sum()),
+            ).sort_values("leads", ascending=False).head(5).reset_index()
+            max_leads = rank["leads"].max()
+            rows_html = ""
+            medals = ["🥇", "🥈", "🥉", "4.", "5."]
+            for i, row in rank.iterrows():
+                pct_bar  = round(row["leads"] / max_leads * 100)
+                tasa     = round(row["enviadas"] / row["leads"] * 100) if row["leads"] else 0
+                clr_tasa = "#22c55e"
+                medal    = medals[i] if i < len(medals) else f"{i+1}."
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid #f1f5f9">'
+                    f'<span style="font-size:0.8rem;width:20px;flex-shrink:0">{medal}</span>'
+                    f'<div style="flex:1;min-width:0">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+                    f'<span style="font-size:0.75rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{row["source"]}</span>'
+                    f'<span style="font-size:0.7rem;font-weight:700;color:{clr_tasa};margin-left:0.3rem;flex-shrink:0">{tasa}%</span>'
+                    f'</div>'
+                    f'<div style="background:#f1f5f9;border-radius:999px;height:3px;margin-top:3px">'
+                    f'<div style="width:{pct_bar}%;height:100%;background:#3b82f6;border-radius:999px"></div>'
+                    f'</div></div>'
+                    f'<span style="font-size:0.72rem;font-weight:700;color:#64748b;flex-shrink:0;margin-left:0.3rem">{int(row["leads"])}</span>'
+                    f'</div>'
+                )
+            st.markdown(rows_html, unsafe_allow_html=True)
 
-    # ── 5. Heatmap ──
-    _section_header("Heatmap — requests por hora y día")
+    # ── 6. Heatmap ──
+    _section_header("Heatmap — requests por hora y día", "🌡️")
     WEEKDAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     WEEKDAY_ES    = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
@@ -712,7 +932,7 @@ def render_dashboard(bank_filter: str = None):
 """, height=0)
 
     # ── 6. Detalle de registros ──
-    _section_header("Detalle de registros")
+    _section_header("Detalle de registros", "🔍")
     f1, f2, f3 = st.columns(3)
     with f1:
         banks = ["Todos"] + sorted(df_raw["bank"].dropna().unique().tolist())
@@ -729,11 +949,41 @@ def render_dashboard(bank_filter: str = None):
     if sel_status != "Todos": df_f = df_f[df_f["status"] == sel_status]
     if sel_rut    != "Todos": df_f = df_f[df_f["rut"]    == sel_rut]
 
-    df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "createdAt", "updatedAt"]].sort_values("createdAt", ascending=False)
-    st.dataframe(
-        _style_status(df_display),
-        hide_index=True, use_container_width=True, height=300,
-    )
+    df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]].sort_values("createdAt", ascending=False)
+
+    # Tabla HTML con badges de status
+    STATUS_BADGE = {
+        "sent_to_bank":     ('<span class="status-badge" style="background:#dcfce7;color:#15803d">✅ Enviada</span>'),
+        "rejected_by_bank": ('<span class="status-badge" style="background:#fee2e2;color:#b91c1c">❌ Rechazada</span>'),
+        "created":          ('<span class="status-badge" style="background:#dbeafe;color:#1d4ed8">🔵 Creada</span>'),
+    }
+    header = "<tr>" + "".join(f"<th>{c}</th>" for c in ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Actualizado"]) + "</tr>"
+    body_rows = []
+    for _, r in df_display.head(200).iterrows():
+        badge   = STATUS_BADGE.get(r["status"], f'<span class="status-badge" style="background:#f1f5f9;color:#64748b">{r["status"]}</span>')
+        c_at    = r["createdAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["createdAt"]) else "—"
+        u_at    = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
+        source  = r["source"] if pd.notna(r.get("source")) else "—"
+        body_rows.append(
+            f"<tr><td>{r['id']}</td><td>{r['bukLeadId']}</td><td>{r['bank']}</td>"
+            f"<td>{badge}</td><td>{r['rut']}</td><td>{source}</td><td>{c_at}</td><td>{u_at}</td></tr>"
+        )
+    table_html = f"""
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;
+                box-shadow:0 1px 3px rgba(0,0,0,0.04),0 4px 20px rgba(0,0,0,0.05);
+                overflow:hidden;margin-bottom:0.8rem">
+        <div style="overflow-x:auto;max-height:360px;overflow-y:auto">
+            <table class="detail-table">
+                <thead style="position:sticky;top:0;z-index:1">{header}</thead>
+                <tbody>{"".join(body_rows)}</tbody>
+            </table>
+        </div>
+        <div style="padding:0.6rem 1rem;background:#f8fafc;border-top:1px solid #e2e8f0;
+                    font-size:0.7rem;color:#94a3b8">
+            Mostrando {min(200, len(df_display))} de {len(df_display)} registros
+        </div>
+    </div>"""
+    st.markdown(table_html, unsafe_allow_html=True)
     DOWNLOAD_EMAILS = {"manuelbunster@gmail.com"}  # ← agrega aquí los emails con permiso
     user_email = getattr(st.experimental_user, "email", None)
     if user_email in DOWNLOAD_EMAILS:
@@ -743,3 +993,12 @@ def render_dashboard(bank_filter: str = None):
             file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
             mime="text/csv",
         )
+
+    # ── Footer ──
+    st.markdown("""
+    <div style="margin-top:3rem;padding:1.2rem 0;border-top:1px solid #e2e8f0;
+                display:flex;align-items:center;justify-content:space-between;
+                flex-wrap:wrap;gap:0.5rem">
+        <span style="font-size:0.72rem;font-weight:700;color:#94a3b8;letter-spacing:0.05em">RELIF</span>
+        <span style="font-size:0.7rem;color:#cbd5e1">Dashboard de operaciones bancarias</span>
+    </div>""", unsafe_allow_html=True)
