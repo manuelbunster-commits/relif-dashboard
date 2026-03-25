@@ -763,7 +763,7 @@ def render_dashboard(bank_filter: str = None):
             )
         st.markdown(
             f'<div style="padding-top:1.2rem">'
-            f'<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0 0 0.8rem">Comparación por banco</p>'
+            f'<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0 0 0.8rem">Banco</p>'
             f'{rows_html}'
             f'</div>',
             unsafe_allow_html=True,
