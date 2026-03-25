@@ -499,16 +499,22 @@ def render_dashboard(bank_filter: str = None):
             unsafe_allow_html=True,
         )
         # Navegación
-        st.markdown(
-            "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
-            "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
-            unsafe_allow_html=True,
-        )
-        nav_pages = [
+        _base = Path(__file__).parent
+        _all_nav_check = ["Acumulado.py", "pages/1_BCI.py", "pages/2_Banco_Internacional.py"]
+        _visible_count = sum(1 for p in _all_nav_check if (_base / p).exists())
+        if _visible_count > 1:
+            st.markdown(
+                "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
+                "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
+                unsafe_allow_html=True,
+            )
+        _all_nav = [
             ("🏦",     "Consolidado",        "Acumulado.py",                   None,       None),
             (_bci_b64, "BCI",                "pages/1_BCI.py",                 "filter:brightness(0) invert(1);opacity:0.85", "24px"),
             (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,       "13px"),
         ]
+        _base = Path(__file__).parent
+        nav_pages = [(l, lbl, p, f, h) for l, lbl, p, f, h in _all_nav if (_base / p).exists()]
         for logo, label, page_file, img_filter, img_h in nav_pages:
             c1, c2 = st.columns([1, 5])
             with c1:
