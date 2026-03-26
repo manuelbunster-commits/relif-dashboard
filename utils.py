@@ -605,7 +605,7 @@ def render_dashboard(bank_filter: str = None):
     # ── Filtros de fecha ──
     dc1, dc2 = st.columns(2)
     with dc1:
-        start_date = st.date_input("Desde", value=date.today() - timedelta(days=10))
+        start_date = st.date_input("Desde", value=date.today())
     with dc2:
         end_date = st.date_input("Hasta", value=date.today() + timedelta(days=1))
 
