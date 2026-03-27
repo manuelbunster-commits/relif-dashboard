@@ -127,6 +127,11 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 /* ── Ocultar navegación nativa de Streamlit ── */
 [data-testid="stSidebarNav"] { display: none !important; }
 
+/* ── Alinear columnas del sidebar verticalmente ── */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+}
+
 /* ── st.page_link en sidebar: sin fondo azul, estilo link limpio ── */
 [data-testid="stSidebar"] [data-testid="stPageLink"],
 [data-testid="stSidebar"] [data-testid="stPageLink"] > div,
@@ -374,6 +379,8 @@ def fetch_data(start: str, end: str) -> pd.DataFrame:
         })
 
     df = pd.DataFrame(rows)
+    # pre_approved = equivalente a enviada al banco (usado por Banco Internacional)
+    df["status"] = df["status"].replace("pre_approved", "sent_to_bank")
     df["createdAt"] = pd.to_datetime(df["createdAt"], utc=True).dt.tz_convert("America/Santiago")
     df["updatedAt"] = pd.to_datetime(df["updatedAt"], utc=True).dt.tz_convert("America/Santiago")
     df["date"]    = df["createdAt"].dt.date
@@ -524,35 +531,32 @@ def render_dashboard(bank_filter: str = None):
         # Navegación — solo si hay más de una página disponible
         _base = Path(__file__).parent
         _all_nav = [
-            ("🏦",     "Consolidado",        "Acumulado.py",                   None,    None),
-            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None,    "32px"),
-            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,    "13px"),
+            ("🏦",     "Consolidado",        "Acumulado.py",                   None,    None,   "/"),
+            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None,    "18px", "/BCI"),
+            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,    "13px", "/Banco_Internacional"),
         ]
-        nav_pages = [(l, lbl, p, f, h) for l, lbl, p, f, h in _all_nav if (_base / p).exists()]
+        nav_pages = [(l, lbl, p, f, h, url) for l, lbl, p, f, h, url in _all_nav if (_base / p).exists()]
         if len(nav_pages) > 1:
             st.markdown(
                 "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
                 "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
                 unsafe_allow_html=True,
             )
-            for logo, label, page_file, img_filter, img_h in nav_pages:
-                c1, c2 = st.columns([1, 5])
-                with c1:
-                    if logo and logo not in ("🏦",):
-                        wrap_style = "display:inline-flex;align-items:center;background:white;border-radius:3px;padding:1px 3px;"
-                        st.markdown(
-                            f'<div style="padding-top:4px;{wrap_style}">'
-                            f'<img src="data:image/png;base64,{logo}" style="height:{img_h}"></div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.markdown(f"<div style='padding-top:6px;font-size:1rem'>{logo}</div>", unsafe_allow_html=True)
-                with c2:
-                    try:
-                        st.page_link(page_file, label=label)
-                    except Exception:
-                        if st.button(label, key=f"nav_{label}"):
-                            st.switch_page(page_file)
+            nav_html = ""
+            for logo, label, page_file, img_filter, img_h, url in nav_pages:
+                if logo and logo not in ("🏦",):
+                    icon_html = f'<img src="data:image/png;base64,{logo}" style="height:20px;width:auto;flex-shrink:0;vertical-align:middle">'
+                else:
+                    icon_html = f'<span style="font-size:1.1rem;flex-shrink:0">{logo}</span>'
+                nav_html += (
+                    f'<a href="{url}" target="_self" style="display:flex;align-items:center;gap:0.7rem;'
+                    f'padding:0.4rem 0.3rem;text-decoration:none;border-radius:6px;'
+                    f'color:#cbd5e1;font-size:0.9rem;font-weight:500;transition:background 0.15s">'
+                    f'{icon_html}'
+                    f'<span>{label}</span>'
+                    f'</a>'
+                )
+            st.markdown(nav_html, unsafe_allow_html=True)
         st.markdown(
             "<hr style='border:none;border-top:1px solid #1e293b;margin:1rem 0 0.8rem'>",
             unsafe_allow_html=True,
@@ -569,6 +573,8 @@ def render_dashboard(bank_filter: str = None):
         st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
         comparar          = False  # desactivado
         alerta_threshold  = 999  # desactivado
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
+        rut_search = st.text_input("🔍 Buscar RUT", placeholder="ej: 12.345.678-9", key=f"rut_search_{bank_filter}")
 
     # ── Header ──
     if bank_filter == "BCI":
@@ -956,21 +962,20 @@ def render_dashboard(bank_filter: str = None):
 
     # ── 6. Detalle de registros ──
     _section_header("Detalle de registros", "🔍")
-    f1, f2, f3 = st.columns(3)
+    f1, f2 = st.columns(2)
     with f1:
         banks = ["Todos"] + sorted(df_raw["bank"].dropna().unique().tolist())
         sel_bank = st.selectbox("Banco", banks, key=f"fb_{bank_filter}")
     with f2:
         stats = ["Todos"] + sorted(df_raw["status"].dropna().unique().tolist())
         sel_status = st.selectbox("Status", stats, key=f"fs_{bank_filter}")
-    with f3:
-        ruts = ["Todos"] + sorted(df_raw["rut"].dropna().unique().tolist())
-        sel_rut = st.selectbox("RUT", ruts, key=f"fr_{bank_filter}")
 
     df_f = df_raw.copy()
     if sel_bank   != "Todos": df_f = df_f[df_f["bank"]   == sel_bank]
     if sel_status != "Todos": df_f = df_f[df_f["status"] == sel_status]
-    if sel_rut    != "Todos": df_f = df_f[df_f["rut"]    == sel_rut]
+    if rut_search:
+        term = rut_search.strip().lower()
+        df_f = df_f[df_f["rut"].astype(str).str.lower().str.contains(term, na=False)]
 
     df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]].sort_values("createdAt", ascending=False)
 
