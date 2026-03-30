@@ -1047,7 +1047,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     }
 
     sueldos_map = _fetch_sueldos_por_rut() if show_salary_range else {}
-    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Rango sueldo" if show_salary_range else "Actualizado"]
+    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
     header = "<tr>" + "".join(f"<th>{c}</th>" for c in col_headers) + "</tr>"
     body_rows = []
     for _, r in df_display.head(200).iterrows():
