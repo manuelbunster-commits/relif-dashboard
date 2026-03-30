@@ -345,16 +345,30 @@ def get_token() -> str:
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_data(start: str, end: str) -> pd.DataFrame:
+def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFrame:
     token = get_token()
-    query = f"""
-        SELECT "BankOfferRequests".*, "Clients"."id" as "clientId", "Clients"."rut", "Clients"."source"
-        FROM "BankOfferRequests"
-        LEFT JOIN "Clients" ON "BankOfferRequests"."rut" = "Clients"."rut"
-          AND "Clients"."businessUnitId" = 73
-        WHERE "BankOfferRequests"."createdAt" >= '{start}'
-          AND "BankOfferRequests"."createdAt" <  '{end}'
-    """
+    if dedup_clients:
+        query = f"""
+            SELECT "BankOfferRequests".*, c."id" as "clientId", c."rut", c."source"
+            FROM "BankOfferRequests"
+            LEFT JOIN (
+                SELECT DISTINCT ON ("rut") "id", "rut", "source"
+                FROM "Clients"
+                WHERE "businessUnitId" = 73
+                ORDER BY "rut", "createdAt" DESC
+            ) c ON "BankOfferRequests"."rut" = c."rut"
+            WHERE "BankOfferRequests"."createdAt" >= '{start}'
+              AND "BankOfferRequests"."createdAt" <  '{end}'
+        """
+    else:
+        query = f"""
+            SELECT "BankOfferRequests".*, "Clients"."id" as "clientId", "Clients"."rut", "Clients"."source"
+            FROM "BankOfferRequests"
+            LEFT JOIN "Clients" ON "BankOfferRequests"."rut" = "Clients"."rut"
+              AND "Clients"."businessUnitId" = 73
+            WHERE "BankOfferRequests"."createdAt" >= '{start}'
+              AND "BankOfferRequests"."createdAt" <  '{end}'
+        """
     resp = requests.post(
         RELIF_EXECUTE_URL,
         headers={"Authorization": f"Bearer {token}"},
@@ -531,7 +545,7 @@ def _fetch_sueldos_por_rut():
     return {r["rut"]: float(r["avg_gross"]) for r in results if r.get("avg_gross")}
 
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -664,8 +678,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         prev_end   = str(start_date)
 
     with st.spinner("Cargando datos..."):
-        df_raw  = fetch_data(str(start_date), str(end_date))
-        df_prev = fetch_data(prev_start, prev_end)
+        df_raw  = fetch_data(str(start_date), str(end_date), dedup_clients=dedup_clients)
+        df_prev = fetch_data(prev_start, prev_end, dedup_clients=dedup_clients)
 
     now_cl = datetime.now(pytz.timezone("America/Santiago")).strftime("%d/%m/%Y %H:%M")
     st.markdown(f'<p class="last-updated">Actualizado: {now_cl}</p>', unsafe_allow_html=True)
