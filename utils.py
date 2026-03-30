@@ -495,7 +495,43 @@ def _style_status(df: pd.DataFrame):
     return df.style.apply(row_bg, axis=1)
 
 
-def render_dashboard(bank_filter: str = None):
+RANGOS_SUELDO = [
+    (0,          600_000,   "< $600k",      "#f1f5f9", "#475569"),
+    (600_000,  1_600_000,   "$600k – $1.6M","#dbeafe", "#1d4ed8"),
+    (1_600_000,2_500_000,   "$1.6M – $2.5M","#dcfce7", "#15803d"),
+    (2_500_000,4_000_000,   "$2.5M – $4M",  "#fef9c3", "#92400e"),
+    (4_000_000,8_000_000,   "$4M – $8M",    "#fed7aa", "#c2410c"),
+    (8_000_000,999_999_999, "Más de $8M",   "#fce7f3", "#be185d"),
+]
+
+def _rango_badge(monto):
+    if pd.isna(monto):
+        return '<span class="status-badge" style="background:#f1f5f9;color:#94a3b8">Sin datos</span>'
+    for lo, hi, label, bg, color in RANGOS_SUELDO:
+        if lo <= monto < hi:
+            return f'<span class="status-badge" style="background:{bg};color:{color}">{label}</span>'
+    return "—"
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _fetch_sueldos_por_rut():
+    token = os.environ.get("RELIF_JWT_TOKEN", "")
+    query = """
+        SELECT c.rut, ROUND(AVG((d.data->>'incomeGross')::numeric)) AS avg_gross
+        FROM "Documents" d
+        JOIN "Clients" c ON d."clientId" = c.id
+        WHERE d.type = 'buk_settlement'
+          AND (d.data->>'incomeGross') IS NOT NULL
+        GROUP BY c.rut
+    """
+    resp = requests.post(RELIF_EXECUTE_URL,
+        headers={"Authorization": f"Bearer {token}"},
+        json={"userQuery": query.strip()}, timeout=60)
+    resp.raise_for_status()
+    results = resp.json().get("results", [])
+    return {r["rut"]: float(r["avg_gross"]) for r in results if r.get("avg_gross")}
+
+
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -535,6 +571,7 @@ def render_dashboard(bank_filter: str = None):
             ("🏦",     "Consolidado",        "Acumulado.py",                   None,    None,   "/"),
             (_bci_b64, "BCI",                "pages/1_BCI.py",                 None,    "18px", "/BCI"),
             (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,    "13px", "/Banco_Internacional"),
+            ("📣",     "Campañas (prueba)",  "pages/99_Prueba.py",             None,    None,   "/Prueba"),
         ]
         nav_pages = [(l, lbl, p, f, h, url) for l, lbl, p, f, h, url in _all_nav if (_base / p).exists()]
         if len(nav_pages) > 1:
@@ -817,11 +854,19 @@ def render_dashboard(bank_filter: str = None):
     fig_combo = go.Figure()
     fig_combo.add_trace(go.Bar(x=by_day["date"], y=by_day["Count"], name="Por día", marker_color="#3b82f6", marker_line_width=0))
     fig_combo.add_trace(go.Scatter(x=by_day["date"], y=by_day["Tendencia"], name="Tendencia (3d)", line=dict(color="#8b5cf6", width=2.5, dash="dot")))
+    _xaxis = dict(showgrid=False)
+    if chart_scroll:
+        _xaxis.update(dict(
+            range=[by_day["date"].iloc[0] - pd.Timedelta(days=0.5),
+                   by_day["date"].iloc[-1] + pd.Timedelta(days=1)],
+            rangeslider=dict(visible=True, thickness=0.06, bgcolor="#f1f5f9"),
+        ))
     fig_combo.update_layout(
-        margin=dict(t=10, b=10), height=280, xaxis_title="", yaxis_title="",
+        margin=dict(t=10, b=40 if chart_scroll else 10, r=20), height=300 if chart_scroll else 280,
+        xaxis_title="", yaxis_title="",
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
         yaxis=dict(gridcolor="#f1f5f9", zeroline=False),
-        xaxis=dict(showgrid=False),
+        xaxis=_xaxis,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11)),
         font=dict(family="Inter"),
     )
@@ -963,13 +1008,20 @@ def render_dashboard(bank_filter: str = None):
 
     # ── 6. Detalle de registros ──
     _section_header("Detalle de registros", "🔍")
-    f1, f2 = st.columns(2)
-    with f1:
+    _cols = [1, 1, 1] if show_salary_range else [1, 1]
+    filter_cols = st.columns(_cols)
+    with filter_cols[0]:
         banks = ["Todos"] + sorted(df_raw["bank"].dropna().unique().tolist())
         sel_bank = st.selectbox("Banco", banks, key=f"fb_{bank_filter}")
-    with f2:
+    with filter_cols[1]:
         stats = ["Todos"] + sorted(df_raw["status"].dropna().unique().tolist())
         sel_status = st.selectbox("Status", stats, key=f"fs_{bank_filter}")
+    if show_salary_range:
+        with filter_cols[2]:
+            st.markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+            sort_by_salary = st.checkbox("↓ Ordenar por sueldo", key=f"sort_sal_{bank_filter}")
+    else:
+        sort_by_salary = False
 
     df_f = df_raw.copy()
     if sel_bank   != "Todos": df_f = df_f[df_f["bank"]   == sel_bank]
@@ -978,7 +1030,14 @@ def render_dashboard(bank_filter: str = None):
         term = rut_search.strip().lower()
         df_f = df_f[df_f["rut"].astype(str).str.lower().str.contains(term, na=False)]
 
-    df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]].sort_values("createdAt", ascending=False)
+    df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]].copy()
+    if sort_by_salary and show_salary_range:
+        sueldos_map_sort = _fetch_sueldos_por_rut()
+        df_display = df_display.copy()
+        df_display["_avg_gross"] = df_display["rut"].map(sueldos_map_sort).fillna(-1)
+        df_display = df_display.sort_values("_avg_gross", ascending=False).drop(columns=["_avg_gross"])
+    else:
+        df_display = df_display.sort_values("createdAt", ascending=False)
 
     # Tabla HTML con badges de status
     STATUS_BADGE = {
@@ -986,16 +1045,23 @@ def render_dashboard(bank_filter: str = None):
         "rejected_by_bank": ('<span class="status-badge" style="background:#fee2e2;color:#b91c1c">❌ Rechazada</span>'),
         "created":          ('<span class="status-badge" style="background:#dbeafe;color:#1d4ed8">🔵 Creada</span>'),
     }
-    header = "<tr>" + "".join(f"<th>{c}</th>" for c in ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Actualizado"]) + "</tr>"
+
+    sueldos_map = _fetch_sueldos_por_rut() if show_salary_range else {}
+    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Rango sueldo" if show_salary_range else "Actualizado"]
+    header = "<tr>" + "".join(f"<th>{c}</th>" for c in col_headers) + "</tr>"
     body_rows = []
     for _, r in df_display.head(200).iterrows():
         badge   = STATUS_BADGE.get(r["status"], f'<span class="status-badge" style="background:#f1f5f9;color:#64748b">{r["status"]}</span>')
         c_at    = r["createdAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["createdAt"]) else "—"
-        u_at    = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
         source  = r["source"] if pd.notna(r.get("source")) else "—"
+        if show_salary_range:
+            avg = sueldos_map.get(r["rut"])
+            last_col = _rango_badge(avg) if avg else '<span class="status-badge" style="background:#f1f5f9;color:#94a3b8">Sin datos</span>'
+        else:
+            last_col = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
         body_rows.append(
             f"<tr><td>{r['id']}</td><td>{r['bukLeadId']}</td><td>{r['bank']}</td>"
-            f"<td>{badge}</td><td>{r['rut']}</td><td>{source}</td><td>{c_at}</td><td>{u_at}</td></tr>"
+            f"<td>{badge}</td><td>{r['rut']}</td><td>{source}</td><td>{c_at}</td><td>{last_col}</td></tr>"
         )
     table_html = f"""
     <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;
