@@ -13,8 +13,8 @@ _PASSWORD = st.secrets.get("BCI_PASSWORD", os.environ.get("BCI_PASSWORD", ""))
 if not st.session_state.get("bci_auth"):
     st.markdown("<div style='max-width:360px;margin:6rem auto'>", unsafe_allow_html=True)
     st.markdown("### 🔒 Acceso BCI")
-    pwd = st.text_input("Contraseña", type="password")
-    if st.button("Ingresar"):
+    pwd = st.text_input("Contraseña", type="password", on_change=lambda: st.session_state.update({"bci_submit": True}))
+    if st.button("Ingresar") or st.session_state.pop("bci_submit", False):
         if pwd == _PASSWORD:
             st.session_state["bci_auth"] = True
             st.rerun()
