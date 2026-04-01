@@ -1117,33 +1117,42 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         _TD = "style='padding:0.45rem 1rem 0.45rem 0.6rem;font-size:0.82rem;border-bottom:1px solid #f1f5f9'"
         _TABLE = "style='border-collapse:collapse;font-family:Inter,sans-serif;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)'"
 
+        # ── Fetch 10 días (compartido entre distribución y enviados) ──
+        _today = date.today()
+        _df_10d = fetch_data(str(_today - timedelta(days=10)), str(_today + timedelta(days=1)), dedup_clients=dedup_clients)
+        if not _df_10d.empty:
+            if bank_filter:
+                _df_10d = _df_10d[_df_10d["bank"] == bank_filter]
+            _df_10d["status"] = _df_10d["status"].replace("pre_approved", "sent_to_bank")
+        _enviados = _df_10d[_df_10d["status"] == "sent_to_bank"].sort_values("createdAt", ascending=False).head(20) if not _df_10d.empty else pd.DataFrame()
+
         # ── Distribución por rango ──
         with col_dist:
-            _rangos_series = df_display["rut"].map(_get_rango)
-            _conteo = _rangos_series.value_counts().reset_index()
-            _conteo.columns = ["Rango", "Leads"]
+            # Usamos _df_10d para el % (tiene tanto los totales como los enviados en la misma ventana)
+            _df_dist = _df_10d.copy() if not _df_10d.empty else df_raw.copy()
+            _df_dist["_rango"] = _df_dist["rut"].map(_get_rango)
+            _dist_total = _df_dist.groupby("_rango").size().rename("Leads")
+            _dist_env   = _df_dist[_df_dist["status"] == "sent_to_bank"].groupby("_rango").size().rename("Enviados")
+            _conteo = pd.concat([_dist_total, _dist_env], axis=1).fillna(0).astype({"Leads": int, "Enviados": int})
+            _conteo = _conteo.sort_values("Leads", ascending=False).reset_index()
+            _conteo.columns = ["Rango", "Leads", "Enviados"]
             _rows_html = ""
             for _, row in _conteo.iterrows():
                 bg, color = _rango_meta.get(row["Rango"], ("#f1f5f9", "#94a3b8"))
                 badge = f'<span class="status-badge" style="background:{bg};color:{color}">{row["Rango"]}</span>'
-                _rows_html += f"<tr><td {_TD} style='padding:0.45rem 1rem 0.45rem 0.6rem;font-size:0.82rem;border-bottom:1px solid #f1f5f9;font-weight:600'>{int(row['Leads'])}</td><td {_TD}>{badge}</td></tr>"
+                _pct = round(row["Enviados"] / row["Leads"] * 100) if row["Leads"] > 0 else 0
+                _pct_color = "#15803d" if _pct >= 50 else "#92400e" if _pct >= 20 else "#64748b"
+                _rows_html += f"<tr><td {_TD} style='padding:0.45rem 1rem 0.45rem 0.6rem;font-size:0.82rem;border-bottom:1px solid #f1f5f9;font-weight:600'>{int(row['Leads'])}</td><td {_TD}>{badge}</td><td {_TD} style='font-size:0.82rem;font-weight:700;color:{_pct_color};border-bottom:1px solid #f1f5f9'>{_pct}%</td></tr>"
             st.markdown(f"""
-            <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0.8rem 0 0.4rem">Distribución por rango sueldo bruto</p>
+            <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0.8rem 0 0.4rem">Distribución por rango sueldo bruto (10 días)</p>
             <table {_TABLE}>
-                <thead><tr><th {_TH}>Leads</th><th {_TH}>Rango sueldo bruto</th></tr></thead>
+                <thead><tr><th {_TH}>Leads</th><th {_TH}>Rango sueldo bruto</th><th {_TH}>% Enviado</th></tr></thead>
                 <tbody>{_rows_html}</tbody>
             </table>""", unsafe_allow_html=True)
 
         # ── Últimos enviados al banco (10 días) ──
         with col_env:
-            _today = date.today()
-            _df_10d = fetch_data(str(_today - timedelta(days=10)), str(_today + timedelta(days=1)), dedup_clients=dedup_clients)
-            if not _df_10d.empty:
-                if bank_filter:
-                    _df_10d = _df_10d[_df_10d["bank"] == bank_filter]
-                _df_10d["status"] = _df_10d["status"].replace("pre_approved", "sent_to_bank")
-                _enviados = _df_10d[_df_10d["status"] == "sent_to_bank"].sort_values("createdAt", ascending=False).head(20)
-            else:
+            if _df_10d.empty:
                 _enviados = pd.DataFrame()
             _env_rows = ""
             for _, r in _enviados.iterrows():
