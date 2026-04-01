@@ -68,7 +68,7 @@ if not st.session_state.get("bci_auth"):
         text-align: center;
         margin-bottom: 1.8rem;
     }
-    .login-logo img { height: 36px; opacity: 0.95; }
+    .login-logo img { height: 80px; opacity: 0.95; }
     .login-title {
         text-align: center;
         font-size: 1.5rem;
