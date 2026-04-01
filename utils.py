@@ -1151,14 +1151,15 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                 bg, color = _rango_meta.get(rango, ("#f1f5f9", "#94a3b8"))
                 rango_badge = f'<span class="status-badge" style="background:{bg};color:{color}">{rango}</span>'
                 env_badge = '<span class="status-badge" style="background:#dcfce7;color:#15803d">✅ Enviado</span>'
-                _env_rows += f"<tr><td {_TD}>{r['rut']}</td><td {_TD}>{rango_badge}</td><td {_TD}>{env_badge}</td></tr>"
+                _fecha = pd.to_datetime(r["createdAt"]).strftime("%-d %b %Y") if pd.notna(r["createdAt"]) else "—"
+                _env_rows += f"<tr><td {_TD}>{r['rut']}</td><td {_TD}>{rango_badge}</td><td {_TD}>{_fecha}</td><td {_TD}>{env_badge}</td></tr>"
             if not _env_rows:
-                _env_rows = f"<tr><td colspan='3' {_TD} style='color:#94a3b8'>Sin registros en los últimos 10 días</td></tr>"
+                _env_rows = f"<tr><td colspan='4' {_TD} style='color:#94a3b8'>Sin registros en los últimos 10 días</td></tr>"
             st.markdown(f"""
             <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0.8rem 0 0.4rem">Últimos enviados al banco (10 días)</p>
             <div style="max-height:220px;overflow-y:auto;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
             <table {_TABLE} style="border-collapse:collapse;font-family:Inter,sans-serif;width:100%;background:white">
-                <thead style="position:sticky;top:0;z-index:1;background:white"><tr><th {_TH}>RUT</th><th {_TH}>Rango sueldo bruto</th><th {_TH}>Status</th></tr></thead>
+                <thead style="position:sticky;top:0;z-index:1;background:white"><tr><th {_TH}>RUT</th><th {_TH}>Rango sueldo bruto</th><th {_TH}>Fecha</th><th {_TH}>Status</th></tr></thead>
                 <tbody>{_env_rows}</tbody>
             </table>
             </div>""", unsafe_allow_html=True)
