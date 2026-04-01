@@ -545,7 +545,7 @@ def _fetch_sueldos_por_rut():
     return {r["rut"]: float(r["avg_gross"]) for r in results if r.get("avg_gross")}
 
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -863,10 +863,15 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
 
     st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0.5rem 0 0.3rem">Requests por día + tendencia</p>', unsafe_allow_html=True)
     by_day = df_g.groupby("date").size().reset_index(name="Count")
-    by_day["Tendencia"] = by_day["Count"].rolling(window=3, min_periods=1).mean()
+    if chart_days:
+        by_day = by_day.tail(chart_days).reset_index(drop=True)
+    by_day["Enviados"] = df_g[df_g["status"] == "sent_to_bank"].groupby("date").size().reindex(by_day["date"]).fillna(0).values
+    by_day["Otros"] = by_day["Count"] - by_day["Enviados"]
+    by_day["Tendencia"] = by_day["Enviados"].rolling(window=3, min_periods=1).mean()
 
     fig_combo = go.Figure()
-    fig_combo.add_trace(go.Bar(x=by_day["date"], y=by_day["Count"], name="Por día", marker_color="#3b82f6", marker_line_width=0))
+    fig_combo.add_trace(go.Bar(x=by_day["date"], y=by_day["Enviados"], name="Enviados al banco", marker_color="#22c55e", marker_line_width=0))
+    fig_combo.add_trace(go.Bar(x=by_day["date"], y=by_day["Otros"], name="Otros", marker_color="#3b82f6", marker_line_width=0))
     fig_combo.add_trace(go.Scatter(x=by_day["date"], y=by_day["Tendencia"], name="Tendencia (3d)", line=dict(color="#8b5cf6", width=2.5, dash="dot")))
     _xaxis = dict(showgrid=False)
     if chart_scroll:
@@ -876,6 +881,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             rangeslider=dict(visible=True, thickness=0.06, bgcolor="#f1f5f9"),
         ))
     fig_combo.update_layout(
+        barmode="stack",
         margin=dict(t=10, b=40 if chart_scroll else 10, r=20), height=300 if chart_scroll else 280,
         xaxis_title="", yaxis_title="",
         plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
@@ -885,7 +891,6 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         font=dict(family="Inter"),
     )
     st.plotly_chart(fig_combo, use_container_width=True)
-
 
     # ── 4. Resumen ──
     _section_header("Resumen", "📊")
@@ -1093,6 +1098,101 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         </div>
     </div>"""
     st.markdown(table_html, unsafe_allow_html=True)
+
+    if show_salary_range:
+        _sueldos = _fetch_sueldos_por_rut()
+        _rango_meta = {label: (bg, color) for _, _, label, bg, color in RANGOS_SUELDO}
+        def _get_rango(rut):
+            avg = _sueldos.get(rut)
+            if not avg:
+                return "Sin datos"
+            for lo, hi, label, _, _ in RANGOS_SUELDO:
+                if lo <= avg < hi:
+                    return label
+            return "Sin datos"
+
+        col_dist, col_env = st.columns(2)
+
+        _TH = "style='text-align:left;padding:0.4rem 1rem 0.4rem 0.6rem;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;border-bottom:1px solid #e2e8f0'"
+        _TD = "style='padding:0.45rem 1rem 0.45rem 0.6rem;font-size:0.82rem;border-bottom:1px solid #f1f5f9'"
+        _TABLE = "style='border-collapse:collapse;font-family:Inter,sans-serif;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)'"
+
+        # ── Distribución por rango ──
+        with col_dist:
+            _rangos_series = df_display["rut"].map(_get_rango)
+            _conteo = _rangos_series.value_counts().reset_index()
+            _conteo.columns = ["Rango", "Leads"]
+            _rows_html = ""
+            for _, row in _conteo.iterrows():
+                bg, color = _rango_meta.get(row["Rango"], ("#f1f5f9", "#94a3b8"))
+                badge = f'<span class="status-badge" style="background:{bg};color:{color}">{row["Rango"]}</span>'
+                _rows_html += f"<tr><td {_TD} style='padding:0.45rem 1rem 0.45rem 0.6rem;font-size:0.82rem;border-bottom:1px solid #f1f5f9;font-weight:600'>{int(row['Leads'])}</td><td {_TD}>{badge}</td></tr>"
+            st.markdown(f"""
+            <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0.8rem 0 0.4rem">Distribución por rango sueldo bruto</p>
+            <table {_TABLE}>
+                <thead><tr><th {_TH}>Leads</th><th {_TH}>Rango sueldo bruto</th></tr></thead>
+                <tbody>{_rows_html}</tbody>
+            </table>""", unsafe_allow_html=True)
+
+        # ── Últimos enviados al banco (10 días) ──
+        with col_env:
+            _today = date.today()
+            _df_10d = fetch_data(str(_today - timedelta(days=10)), str(_today + timedelta(days=1)), dedup_clients=dedup_clients)
+            if not _df_10d.empty:
+                if bank_filter:
+                    _df_10d = _df_10d[_df_10d["bank"] == bank_filter]
+                _df_10d["status"] = _df_10d["status"].replace("pre_approved", "sent_to_bank")
+                _enviados = _df_10d[_df_10d["status"] == "sent_to_bank"].sort_values("createdAt", ascending=False).head(20)
+            else:
+                _enviados = pd.DataFrame()
+            _env_rows = ""
+            for _, r in _enviados.iterrows():
+                rango = _get_rango(r["rut"])
+                bg, color = _rango_meta.get(rango, ("#f1f5f9", "#94a3b8"))
+                rango_badge = f'<span class="status-badge" style="background:{bg};color:{color}">{rango}</span>'
+                env_badge = '<span class="status-badge" style="background:#dcfce7;color:#15803d">✅ Enviado</span>'
+                _env_rows += f"<tr><td {_TD}>{r['rut']}</td><td {_TD}>{rango_badge}</td><td {_TD}>{env_badge}</td></tr>"
+            if not _env_rows:
+                _env_rows = f"<tr><td colspan='3' {_TD} style='color:#94a3b8'>Sin registros en los últimos 10 días</td></tr>"
+            st.markdown(f"""
+            <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0.8rem 0 0.4rem">Últimos enviados al banco (10 días)</p>
+            <div style="max-height:220px;overflow-y:auto;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+            <table {_TABLE} style="border-collapse:collapse;font-family:Inter,sans-serif;width:100%;background:white">
+                <thead style="position:sticky;top:0;z-index:1;background:white"><tr><th {_TH}>RUT</th><th {_TH}>Rango sueldo bruto</th><th {_TH}>Status</th></tr></thead>
+                <tbody>{_env_rows}</tbody>
+            </table>
+            </div>""", unsafe_allow_html=True)
+            if not _enviados.empty:
+                _csv_enviados = _enviados[["rut", "bank", "createdAt"]].copy()
+                _csv_enviados["rango_sueldo_bruto"] = _enviados["rut"].map(_get_rango)
+                _csv_enviados["status"] = "Enviado al banco"
+                st.markdown("""
+                <style>
+                div[data-testid="stDownloadButton"] button {
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    color: #475569;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    padding: 0.35rem 0.9rem;
+                    border-radius: 6px;
+                    margin-top: 0.5rem;
+                    transition: all 0.2s;
+                }
+                div[data-testid="stDownloadButton"] button:hover {
+                    background: #f1f5f9;
+                    border-color: #cbd5e1;
+                    color: #1e293b;
+                }
+                </style>""", unsafe_allow_html=True)
+                st.download_button(
+                    label="⬇️ Exportar CSV",
+                    data=_csv_enviados.to_csv(index=False).encode("utf-8"),
+                    file_name="enviados_banco_10dias.csv",
+                    mime="text/csv",
+                    key="dl_enviados",
+                )
+
     DOWNLOAD_EMAILS = {"manuelbunster@gmail.com"}  # ← agrega aquí los emails con permiso
     user_email = getattr(getattr(st, "experimental_user", None), "email", None)
     if user_email in DOWNLOAD_EMAILS:
