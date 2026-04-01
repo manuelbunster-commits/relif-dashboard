@@ -68,7 +68,7 @@ if not st.session_state.get("bci_auth"):
         text-align: center;
         margin-bottom: 1.8rem;
     }
-    .login-logo img { height: 36px; filter: brightness(0) invert(1); opacity: 0.9; }
+    .login-logo img { height: 36px; opacity: 0.95; }
     .login-title {
         text-align: center;
         font-size: 1.5rem;
@@ -150,7 +150,7 @@ if not st.session_state.get("bci_auth"):
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-logo">
-                <img src="https://relif.com/favicon.png" onerror="this.style.display='none'">
+                <img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/relif-logo-DkXo5dGJ.png">
             </div>
             <div class="login-title">Bienvenido</div>
             <div class="login-sub">Dashboard BCI · Relif</div>
