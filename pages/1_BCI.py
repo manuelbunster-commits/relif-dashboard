@@ -13,67 +13,151 @@ _PASSWORD = st.secrets.get("BCI_PASSWORD", os.environ.get("BCI_PASSWORD", ""))
 if not st.session_state.get("bci_auth"):
     st.markdown("""
     <style>
-    [data-testid="stAppViewContainer"] { background: #f8fafc; }
-    [data-testid="stSidebar"] { display: none; }
-    .login-card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-        padding: 2.5rem 2.5rem 2rem;
-        max-width: 380px;
-        margin: 8vh auto 0;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+        min-height: 100vh;
     }
-    .login-logo { text-align: center; margin-bottom: 1.5rem; }
-    .login-logo img { height: 40px; }
+    [data-testid="stSidebar"] { display: none; }
+    [data-testid="stHeader"] { display: none; }
+
+    /* Orbes de fondo */
+    [data-testid="stAppViewContainer"]::before {
+        content: '';
+        position: fixed;
+        top: -20%;
+        left: -10%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    [data-testid="stAppViewContainer"]::after {
+        content: '';
+        position: fixed;
+        bottom: -20%;
+        right: -10%;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .login-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-top: 12vh;
+    }
+    .login-card {
+        background: rgba(255,255,255,0.06);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 20px;
+        padding: 2.8rem 2.5rem 2rem;
+        width: 100%;
+        max-width: 380px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .login-logo {
+        text-align: center;
+        margin-bottom: 1.8rem;
+    }
+    .login-logo img { height: 36px; filter: brightness(0) invert(1); opacity: 0.9; }
     .login-title {
         text-align: center;
-        font-size: 1.25rem;
+        font-size: 1.5rem;
         font-weight: 700;
-        color: #0f172a;
-        margin-bottom: 0.25rem;
+        color: #ffffff;
+        margin-bottom: 0.3rem;
         font-family: Inter, sans-serif;
+        letter-spacing: -0.02em;
     }
     .login-sub {
         text-align: center;
-        font-size: 0.85rem;
-        color: #94a3b8;
-        margin-bottom: 1.8rem;
+        font-size: 0.82rem;
+        color: rgba(255,255,255,0.45);
+        margin-bottom: 2rem;
         font-family: Inter, sans-serif;
     }
+    .login-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.6);
+        font-family: Inter, sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 0.4rem;
+    }
+
     div[data-testid="stTextInput"] input {
-        border-radius: 8px !important;
-        border: 1px solid #e2e8f0 !important;
+        background: rgba(255,255,255,0.07) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 10px !important;
+        color: white !important;
         font-size: 0.9rem !important;
-        padding: 0.55rem 0.75rem !important;
+        padding: 0.65rem 0.85rem !important;
+        font-family: Inter, sans-serif !important;
+        transition: all 0.2s !important;
     }
+    div[data-testid="stTextInput"] input::placeholder { color: rgba(255,255,255,0.3) !important; }
     div[data-testid="stTextInput"] input:focus {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+        border-color: rgba(99,102,241,0.7) !important;
+        background: rgba(255,255,255,0.1) !important;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important;
+        outline: none !important;
     }
+    /* Ícono del ojo en blanco */
+    div[data-testid="stTextInput"] button svg { stroke: rgba(255,255,255,0.4) !important; }
+
     div[data-testid="stButton"] button {
         width: 100%;
-        background: #6366f1;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         font-size: 0.9rem;
         font-weight: 600;
-        padding: 0.6rem 1rem;
-        margin-top: 0.5rem;
-        transition: background 0.2s;
+        padding: 0.7rem 1rem;
+        margin-top: 0.75rem;
+        font-family: Inter, sans-serif;
+        letter-spacing: 0.02em;
+        box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+        transition: all 0.2s;
+        cursor: pointer;
     }
-    div[data-testid="stButton"] button:hover { background: #4f46e5; }
+    div[data-testid="stButton"] button:hover {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        box-shadow: 0 6px 20px rgba(99,102,241,0.55);
+        transform: translateY(-1px);
+    }
+    div[data-testid="stButton"] button:active { transform: translateY(0); }
+
+    /* Mensaje de error */
+    div[data-testid="stAlert"] {
+        background: rgba(239,68,68,0.15) !important;
+        border: 1px solid rgba(239,68,68,0.3) !important;
+        border-radius: 8px !important;
+        color: #fca5a5 !important;
+    }
     </style>
-    <div class="login-card">
-        <div class="login-logo">
-            <img src="https://relif.com/favicon.png" onerror="this.style.display='none'">
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="https://relif.com/favicon.png" onerror="this.style.display='none'">
+            </div>
+            <div class="login-title">Bienvenido</div>
+            <div class="login-sub">Dashboard BCI · Relif</div>
         </div>
-        <div class="login-title">Bienvenido</div>
-        <div class="login-sub">Dashboard BCI · Relif</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Contenido del form dentro de la card via columnas centradas
     _, col, _ = st.columns([1, 2, 1])
     with col:
         pwd = st.text_input("Contraseña", type="password", label_visibility="collapsed",
