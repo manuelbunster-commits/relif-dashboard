@@ -161,8 +161,8 @@ _logo_html = (
 )
 st.markdown(f"""
 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1d4ed8 100%);
-            border-radius:0 0 20px 20px;padding:2.4rem 2.5rem 2.2rem;
-            margin:-1rem -2rem 1.5rem;position:relative;overflow:hidden">
+            border-radius:16px;padding:2.4rem 2.5rem 2.2rem;
+            margin:0 0 1.5rem;position:relative;overflow:hidden">
     <div style="position:absolute;top:-30px;right:-30px;width:200px;height:200px;
                 background:rgba(255,255,255,0.04);border-radius:50%"></div>
     <div style="position:absolute;bottom:-50px;right:80px;width:130px;height:130px;
