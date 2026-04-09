@@ -125,8 +125,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     color: #0f172a !important;
 }
 
-/* ── Ocultar navegación nativa de Streamlit ── */
-[data-testid="stSidebarNav"] { display: none !important; }
+/* navegación nativa visible */
 
 /* ── Alinear columnas del sidebar verticalmente ── */
 [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
@@ -614,16 +613,6 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             dedup_clients     = _cfg["dedup_clients"]
             chart_days        = _cfg["chart_days"]
             st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
-
-        # Navegación
-        st.markdown(
-            "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
-            "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.4rem'>Páginas</div>",
-            unsafe_allow_html=True,
-        )
-        st.page_link("Acumulado.py",          label="📊 Dashboard",    use_container_width=True)
-        st.page_link("pages/3_Funnel_BCI.py", label="🔽 Funnel BCI",   use_container_width=True)
-        st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
 
         # Controles
         st.markdown(
