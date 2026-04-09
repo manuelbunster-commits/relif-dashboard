@@ -550,7 +550,14 @@ def _fetch_sueldos_por_rut():
     return {r["rut"]: float(r["avg_gross"]) for r in results if r.get("avg_gross")}
 
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None):
+_BANK_CONFIGS = {
+    "Todos":               dict(bank_filter=None,                  show_salary_range=False, dedup_clients=False, chart_days=None),
+    "BCI":                 dict(bank_filter="BCI",                 show_salary_range=True,  dedup_clients=True,  chart_days=None),
+    "Banco Internacional": dict(bank_filter="Banco Internacional", show_salary_range=False, dedup_clients=False, chart_days=None),
+    "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
+}
+
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -584,40 +591,40 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             f"</div>",
             unsafe_allow_html=True,
         )
-        # Navegación — solo si hay más de una página disponible
-        _base = Path(__file__).parent
-        _all_nav = [
-            ("🏦",     "Consolidado",        "Acumulado.py",                   None,    None,   "/"),
-            (_bci_b64, "BCI",                "pages/1_BCI.py",                 None,    "18px", "/BCI"),
-            (_bi_b64,  "Banco Internacional","pages/2_Banco_Internacional.py", None,    "13px", "/Banco_Internacional"),
-            ("📣",     "Campañas (prueba)",  "pages/99_Prueba.py",             None,    None,   "/Prueba"),
-        ]
-        nav_pages = [(l, lbl, p, f, h, url) for l, lbl, p, f, h, url in _all_nav if (_base / p).exists()]
-        if len(nav_pages) > 1:
-            st.markdown(
-                "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
-                "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.6rem'>Páginas</div>",
-                unsafe_allow_html=True,
-            )
-            nav_html = ""
-            for logo, label, page_file, img_filter, img_h, url in nav_pages:
-                if logo and logo not in ("🏦",):
-                    icon_html = f'<img src="data:image/png;base64,{logo}" style="height:20px;width:auto;flex-shrink:0;vertical-align:middle">'
-                else:
-                    icon_html = f'<span style="font-size:1.1rem;flex-shrink:0">{logo}</span>'
-                nav_html += (
-                    f'<a href="{url}" target="_self" style="display:flex;align-items:center;gap:0.7rem;'
-                    f'padding:0.4rem 0.3rem;text-decoration:none;border-radius:6px;'
-                    f'color:#cbd5e1;font-size:0.9rem;font-weight:500;transition:background 0.15s">'
-                    f'{icon_html}'
-                    f'<span>{label}</span>'
-                    f'</a>'
-                )
-            st.markdown(nav_html, unsafe_allow_html=True)
         st.markdown(
-            "<hr style='border:none;border-top:1px solid #1e293b;margin:1rem 0 0.8rem'>",
+            "<hr style='border:none;border-top:1px solid #1e293b;margin:0.5rem 0 0.8rem'>",
             unsafe_allow_html=True,
         )
+        # Selector de banco (solo en páginas con bank_selector=True)
+        if bank_selector:
+            st.markdown(
+                "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
+                "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.5rem'>Banco</div>",
+                unsafe_allow_html=True,
+            )
+            _sel = st.selectbox(
+                "Banco",
+                list(_BANK_CONFIGS.keys()),
+                key="bank_selector_sidebar",
+                label_visibility="collapsed",
+            )
+            _cfg = _BANK_CONFIGS[_sel]
+            bank_filter       = _cfg["bank_filter"]
+            show_salary_range = _cfg["show_salary_range"]
+            dedup_clients     = _cfg["dedup_clients"]
+            chart_days        = _cfg["chart_days"]
+            st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
+
+        # Navegación
+        st.markdown(
+            "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
+            "letter-spacing:0.1em;color:#475569;padding:0 0.2rem 0.4rem'>Páginas</div>",
+            unsafe_allow_html=True,
+        )
+        st.page_link("Acumulado.py",          label="📊 Dashboard",    use_container_width=True)
+        st.page_link("pages/3_Funnel_BCI.py", label="🔽 Funnel BCI",   use_container_width=True)
+        st.markdown("<div style='height:0.3rem'></div>", unsafe_allow_html=True)
+
         # Controles
         st.markdown(
             "<div style='font-size:0.6rem;font-weight:700;text-transform:uppercase;"
