@@ -150,13 +150,27 @@ def _counter_data(df: pd.DataFrame) -> dict:
 # ── Layout ───────────────────────────────────────────────────────────
 st.markdown(CARD_CSS + ANIM_CSS, unsafe_allow_html=True)
 
-st.markdown(
-    '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">'
-    '<img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/bci_logo.png" width="80">'
-    '<h1 style="margin:0;font-weight:700;font-size:1.8rem;color:#0f172a;letter-spacing:-0.02em">'
-    'Funnel BCI × Buk</h1></div>',
-    unsafe_allow_html=True,
+# ── Header banner (igual al dashboard principal) ──
+import base64
+from pathlib import Path
+_logo_path = Path(__file__).parent.parent / "relif-logo-DkXo5dGJ.png"
+_logo_b64 = base64.b64encode(_logo_path.read_bytes()).decode() if _logo_path.exists() else ""
+_logo_html = (
+    f'<img src="data:image/png;base64,{_logo_b64}" style="height:52px;filter:brightness(0) invert(1);opacity:0.95">'
+    if _logo_b64 else '<span style="font-size:1.4rem;font-weight:800;color:white;letter-spacing:0.05em">relif</span>'
 )
+st.markdown(f"""
+<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1d4ed8 100%);
+            border-radius:0 0 20px 20px;padding:2.4rem 2.5rem 2.2rem;
+            margin:-1rem -2rem 1.5rem;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-30px;right:-30px;width:200px;height:200px;
+                background:rgba(255,255,255,0.04);border-radius:50%"></div>
+    <div style="position:absolute;bottom:-50px;right:80px;width:130px;height:130px;
+                background:rgba(255,255,255,0.03);border-radius:50%"></div>
+    <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-end">
+        {_logo_html}
+    </div>
+</div>""", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
