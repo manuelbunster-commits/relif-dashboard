@@ -129,4 +129,12 @@ if not st.session_state.get("bci_auth"):
                 st.error("Contraseña incorrecta")
     st.stop()
 
-render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=True, dedup_clients=True)
+def _show_dashboard():
+    render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=True, dedup_clients=True)
+
+
+pg = st.navigation([
+    st.Page(_show_dashboard,          title="Dashboard BCI",    icon="📊"),
+    st.Page("pages/3_Funnel_BCI.py",  title="Funnel BCI × Buk", icon="🔀"),
+])
+pg.run()

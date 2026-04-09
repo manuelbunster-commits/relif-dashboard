@@ -9,7 +9,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 from utils import CARD_CSS
 
-st.set_page_config(page_title="Funnel BCI", page_icon="https://relif.com/favicon.png", layout="wide")
+# set_page_config lo maneja BCI_App.py cuando se carga via st.navigation()
+try:
+    st.set_page_config(page_title="Funnel BCI", page_icon="https://relif.com/favicon.png", layout="wide")
+except Exception:
+    pass
 
 # ── Constantes ───────────────────────────────────────────────────────
 SHEET_ID  = "1Pkm4kX6dRRH0_Ar759E3ynKevK69WgTl"
