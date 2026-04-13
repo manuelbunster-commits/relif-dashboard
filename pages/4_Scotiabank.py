@@ -64,9 +64,10 @@ if not st.session_state.get("scotia_auth"):
         color: rgba(255,255,255,0.45); margin-bottom: 2rem;
         font-family: Inter, sans-serif;
     }
-    .login-icon {
-        text-align: center; font-size: 3rem; margin-bottom: 1.2rem;
+    .login-logo {
+        text-align: center; margin-bottom: 1.4rem;
     }
+    .login-logo img { height: 60px; object-fit: contain; }
     div[data-testid="stTextInput"] input {
         background: rgba(255,255,255,0.07) !important;
         border: 1px solid rgba(255,255,255,0.15) !important;
@@ -106,7 +107,9 @@ if not st.session_state.get("scotia_auth"):
 
     <div class="login-wrapper">
         <div class="login-card">
-            <div class="login-icon">🏦</div>
+            <div class="login-logo">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Scotiabank.svg/320px-Scotiabank.svg.png">
+            </div>
             <div class="login-title">Bienvenido</div>
             <div class="login-sub">Dashboard Scotiabank · Relif</div>
         </div>
