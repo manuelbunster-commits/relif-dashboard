@@ -553,6 +553,7 @@ _BANK_CONFIGS = {
     "Todos":               dict(bank_filter=None,                  show_salary_range=False, dedup_clients=False, chart_days=None),
     "BCI":                 dict(bank_filter="BCI",                 show_salary_range=True,  dedup_clients=True,  chart_days=None),
     "Banco Internacional": dict(bank_filter="Banco Internacional", show_salary_range=False, dedup_clients=False, chart_days=None),
+    "Scotiabank":          dict(bank_filter="Scotiabank",          show_salary_range=True,  dedup_clients=True,  chart_days=None),
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
