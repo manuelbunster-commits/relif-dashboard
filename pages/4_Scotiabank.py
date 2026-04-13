@@ -67,7 +67,7 @@ if not st.session_state.get("scotia_auth"):
     .login-logo {
         text-align: center; margin-bottom: 1.4rem;
     }
-    .login-logo img { height: 60px; object-fit: contain; }
+    .login-logo img { height: 48px; object-fit: contain; image-rendering: crisp-edges; }
     div[data-testid="stTextInput"] input {
         background: rgba(255,255,255,0.07) !important;
         border: 1px solid rgba(255,255,255,0.15) !important;
@@ -108,7 +108,7 @@ if not st.session_state.get("scotia_auth"):
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-logo">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Scotiabank.svg/320px-Scotiabank.svg.png">
+                <img src="https://raw.githubusercontent.com/manuelbunster-commits/relif-dashboard/main/scotiabank_logo.png">
             </div>
             <div class="login-title">Bienvenido</div>
             <div class="login-sub">Dashboard Scotiabank · Relif</div>
