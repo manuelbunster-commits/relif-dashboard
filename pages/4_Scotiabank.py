@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 from utils import render_dashboard
 
-st.set_page_config(page_title="Scotiabank", page_icon="🏦", layout="wide")
+st.set_page_config(page_title="Scotiabank", page_icon="https://www.scotiabank.cl/favicon.ico", layout="wide")
 
 # ── Protección con contraseña ──
 _PASSWORD = st.secrets.get("SCOTIA_PASSWORD", os.environ.get("SCOTIA_PASSWORD", ""))
