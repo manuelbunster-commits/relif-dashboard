@@ -1397,8 +1397,11 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         )
     with _dl2:
         _excel_buf = io.BytesIO()
+        _df_excel = df_display.copy()
+        for _col in _df_excel.select_dtypes(include=["datetimetz"]).columns:
+            _df_excel[_col] = _df_excel[_col].dt.tz_localize(None)
         with pd.ExcelWriter(_excel_buf, engine="openpyxl") as _xw:
-            df_display.to_excel(_xw, index=False, sheet_name="Registros")
+            _df_excel.to_excel(_xw, index=False, sheet_name="Registros")
         st.download_button(
             label="⬇️ Descargar Excel",
             data=_excel_buf.getvalue(),
