@@ -1385,30 +1385,27 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                     key="dl_enviados",
                 )
 
-    DOWNLOAD_EMAILS = {"manuelbunster@gmail.com"}  # ← agrega aquí los emails con permiso
-    user_email = getattr(getattr(st, "experimental_user", None), "email", None)
-    if user_email in DOWNLOAD_EMAILS:
-        import io
-        _dl1, _dl2 = st.columns(2)
-        with _dl1:
-            st.download_button(
-                label="⬇️ Descargar CSV",
-                data=df_display.to_csv(index=False).encode("utf-8"),
-                file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
-                mime="text/csv",
-                key="dl_csv_main",
-            )
-        with _dl2:
-            _excel_buf = io.BytesIO()
-            with pd.ExcelWriter(_excel_buf, engine="openpyxl") as _xw:
-                df_display.to_excel(_xw, index=False, sheet_name="Registros")
-            st.download_button(
-                label="⬇️ Descargar Excel",
-                data=_excel_buf.getvalue(),
-                file_name=f"detalle_registros_{bank_filter or 'consolidado'}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="dl_xlsx_main",
-            )
+    import io
+    _dl1, _dl2 = st.columns(2)
+    with _dl1:
+        st.download_button(
+            label="⬇️ Descargar CSV",
+            data=df_display.to_csv(index=False).encode("utf-8"),
+            file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
+            mime="text/csv",
+            key="dl_csv_main",
+        )
+    with _dl2:
+        _excel_buf = io.BytesIO()
+        with pd.ExcelWriter(_excel_buf, engine="openpyxl") as _xw:
+            df_display.to_excel(_xw, index=False, sheet_name="Registros")
+        st.download_button(
+            label="⬇️ Descargar Excel",
+            data=_excel_buf.getvalue(),
+            file_name=f"detalle_registros_{bank_filter or 'consolidado'}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_xlsx_main",
+        )
 
     # ── Footer ──
     st.markdown(f"""
