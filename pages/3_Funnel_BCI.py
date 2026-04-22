@@ -36,7 +36,7 @@ PPTO_COL = {
 
 # KPIs contextuales (sobre el funnel)
 COUNTERS = [
-    {"kpi": "MAU Buk (usuarios activos mensuales), #",               "label": "MAU Buk",         "icon": "👥", "color": "#1e3a8a"},
+    {"kpi": "Usuarios con beneficio activo, #",                      "label": "Usuarios Activos","icon": "👥", "color": "#1e3a8a"},
     {"kpi": "Tenants (comercios, RUT empresa) con llave abierta, #", "label": "Tenants Activos", "icon": "🏢", "color": "#1d4ed8"},
 ]
 
