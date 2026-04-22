@@ -43,13 +43,12 @@ COUNTERS = [
 # Etapas del funnel (desde Simulador Crédito)
 STAGES = [
     {"kpi": "Entran al simulador de Créditos by Buk, en Buk, %",    "label": "Simulador Crédito",   "color": "#3b82f6"},
-    {"kpi": "RUTs con consentimiento a Buk, #",                      "label": "RUTs Consentimiento", "color": "#0ea5e9"},
     {"kpi": "Leads totales crédito Bci, #",                          "label": "Leads Totales BCI",   "color": "#22c55e"},
     {"kpi": "Leads derivados post FDR, #",                           "label": "Leads Derivados FDR", "color": "#16a34a"},
     {"kpi": "Recibidos en Bci, #",                                   "label": "Recibidos en BCI",    "color": "#15803d"},
     {"kpi": "Gestionados, #",                                        "label": "Gestionados",         "color": "#f59e0b"},
     {"kpi": "Aceptas, #",                                            "label": "Aceptas",             "color": "#ea580c"},
-    {"kpi": "Venta, # acum",                                         "label": "Venta",               "color": "#dc2626"},
+    {"kpi": "Venta Consumo, # acum",                                  "label": "Venta",               "color": "#dc2626"},
 ]
 
 ANIM_CSS = """
@@ -116,7 +115,7 @@ def _load_sheet() -> pd.DataFrame:
 
 
 def _row_for(df: pd.DataFrame, kpi: str):
-    mask = df.iloc[:, 8].astype(str).str.strip() == kpi
+    mask = df.iloc[:, 7].astype(str).str.strip() == kpi
     rows = df[mask]
     return rows.iloc[0] if not rows.empty else None
 
