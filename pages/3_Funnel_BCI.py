@@ -202,8 +202,18 @@ with st.spinner("Cargando datos del sheet..."):
 all_data     = _all_months_data(df_sheet)
 counter_vals = _counter_data(df_sheet)
 
-# Meses que tienen al menos un dato real
-active_months = [m for m in MONTHS if any(v for v in all_data[m].values())]
+# Meses que tienen al menos un dato real y no son futuros (más allá del mes actual)
+from datetime import date as _date
+_month_to_num = {
+    "feb-26": 2, "mar-26": 3, "abr-26": 4, "may-26": 5, "jun-26": 6,
+    "jul-26": 7, "ago-26": 8, "sept-26": 9, "oct-26": 10, "nov-26": 11, "dic-26": 12,
+}
+_current_ym = (_date.today().year, _date.today().month)
+active_months = [
+    m for m in MONTHS
+    if any(v for v in all_data[m].values())
+    and (2026, _month_to_num.get(m, 99)) <= _current_ym
+]
 
 # ── Conteos contextuales ──────────────────────────────────────────────
 _section_header("Contexto de plataforma")
@@ -266,12 +276,38 @@ if active_months:
         f'text-transform:uppercase;letter-spacing:0.06em;color:#64748b;white-space:nowrap">{m}</th>'
         for m in active_months
     )
+    header_cells += (
+        '<th style="padding:0.5rem 0.9rem;text-align:right;font-size:0.72rem;font-weight:700;'
+        'text-transform:uppercase;letter-spacing:0.06em;color:#64748b;white-space:nowrap;'
+        'border-left:2px solid #e2e8f0">Var. MoM</th>'
+    )
+
+    def _mom_cell(vals_row):
+        """Variación entre los últimos dos meses con dato."""
+        with_data = [(i, v) for i, v in enumerate(vals_row) if v]
+        if len(with_data) < 2:
+            return '<td style="padding:0.5rem 0.9rem;text-align:right;color:#cbd5e1;font-size:0.84rem;border-left:2px solid #e2e8f0">—</td>'
+        _, v_prev = with_data[-2]
+        _, v_last = with_data[-1]
+        pct = (v_last - v_prev) / v_prev * 100
+        if pct > 0:
+            color, arrow = "#16a34a", "▲"
+        elif pct < 0:
+            color, arrow = "#dc2626", "▼"
+        else:
+            color, arrow = "#64748b", "→"
+        return (
+            f'<td style="padding:0.5rem 0.9rem;text-align:right;font-size:0.84rem;'
+            f'font-weight:700;color:{color};white-space:nowrap;border-left:2px solid #e2e8f0">'
+            f'{arrow} {abs(pct):.0f}%</td>'
+        )
 
     body_rows = ""
     for stage in STAGES:
         vals_row = [all_data[m][stage["kpi"]] for m in active_months]
         max_v    = max((v for v in vals_row if v), default=1)
         cells    = "".join(_cell(v, max_v, stage["color"]) for v in vals_row)
+        cells   += _mom_cell(vals_row)
         body_rows += (
             f'<tr>'
             f'<td style="padding:0.5rem 0.9rem;font-size:0.85rem;color:#374151;font-weight:500;'
