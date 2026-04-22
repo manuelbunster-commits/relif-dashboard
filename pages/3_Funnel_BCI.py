@@ -349,11 +349,7 @@ with funnel_col:
 
     texts, hovers = [], []
     for i, (stage, val) in enumerate(zip(STAGES, vals)):
-        drop = ""
-        if i > 0 and vals[i-1] and val:
-            p = val / vals[i-1] * 100
-            drop = f"  ↓{p:.0f}%"
-        texts.append(f"<b>{val:,.0f}</b>{drop}" if val else "")
+        texts.append(f"<b>{val:,.0f}</b>" if val else "")
         ppto_txt = f"<br>Presupuesto: {pptos[i]:,.0f}" if pptos[i] else ""
         hovers.append(f"<b>{stage['label']}</b><br>Real: {val:,.0f}{ppto_txt}<extra></extra>")
 
@@ -397,7 +393,7 @@ with funnel_col:
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown(
         '<div style="display:flex;gap:2rem;justify-content:center;margin-top:-0.5rem">'
-        '<span style="font-size:0.74rem;color:#64748b">&#9632; Barra = Real &nbsp;|&nbsp; ↓% = caída vs paso anterior</span>'
+        '<span style="font-size:0.74rem;color:#64748b">&#9632; Barra = Real</span>'
         '<span style="font-size:0.74rem;color:#94a3b8">-- = Presupuesto</span></div>',
         unsafe_allow_html=True,
     )
