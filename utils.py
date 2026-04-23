@@ -398,8 +398,6 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         })
 
     df = pd.DataFrame(rows)
-    # Excluir registros sin RUT válido
-    df = df[df["rut"].notna() & (df["rut"].astype(str).str.strip() != "nan")]
     # pre_approved = equivalente a enviada al banco (usado por Banco Internacional)
     df["status"] = df["status"].replace("pre_approved", "sent_to_bank")
     df["createdAt"] = pd.to_datetime(df["createdAt"], utc=True).dt.tz_convert("America/Santiago")
@@ -743,6 +741,14 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     if bank_filter:
         df_raw  = df_raw[df_raw["bank"] == bank_filter]
         df_prev = df_prev[df_prev["bank"] == bank_filter] if not df_prev.empty else df_prev
+
+    # Excluir registros sin RUT válido (excepto Banco Internacional donde los NaN son relevantes)
+    if bank_filter != "Banco Internacional":
+        _nan_mask = df_raw["rut"].notna() & (df_raw["rut"].astype(str).str.strip() != "nan")
+        df_raw  = df_raw[_nan_mask]
+        if not df_prev.empty:
+            _nan_mask_prev = df_prev["rut"].notna() & (df_prev["rut"].astype(str).str.strip() != "nan")
+            df_prev = df_prev[_nan_mask_prev]
         if df_raw.empty:
             st.markdown(f"""
             <div style="text-align:center;padding:3rem 1rem">
