@@ -1356,61 +1356,6 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                 <tbody>{_env_rows}</tbody>
             </table>
             </div>""", unsafe_allow_html=True)
-            if not _enviados.empty:
-                _csv_enviados = _enviados[["rut", "bank", "createdAt"]].copy()
-                _csv_enviados["rango_sueldo_bruto"] = _enviados["rut"].map(_get_rango)
-                _csv_enviados["status"] = "Enviado al banco"
-                st.markdown("""
-                <style>
-                div[data-testid="stDownloadButton"] button {
-                    background: #f8fafc;
-                    border: 1px solid #e2e8f0;
-                    color: #475569;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    padding: 0.35rem 0.9rem;
-                    border-radius: 6px;
-                    margin-top: 0.5rem;
-                    transition: all 0.2s;
-                }
-                div[data-testid="stDownloadButton"] button:hover {
-                    background: #f1f5f9;
-                    border-color: #cbd5e1;
-                    color: #1e293b;
-                }
-                </style>""", unsafe_allow_html=True)
-                st.download_button(
-                    label="⬇️ Exportar CSV",
-                    data=_csv_enviados.to_csv(index=False).encode("utf-8"),
-                    file_name="enviados_banco_10dias.csv",
-                    mime="text/csv",
-                    key="dl_enviados",
-                )
-
-    import io
-    _dl1, _dl2 = st.columns(2)
-    with _dl1:
-        st.download_button(
-            label="⬇️ Descargar CSV",
-            data=df_display.to_csv(index=False).encode("utf-8"),
-            file_name=f"detalle_registros_{bank_filter or 'consolidado'}.csv",
-            mime="text/csv",
-            key="dl_csv_main",
-        )
-    with _dl2:
-        _excel_buf = io.BytesIO()
-        _df_excel = df_display.copy()
-        for _col in _df_excel.select_dtypes(include=["datetimetz"]).columns:
-            _df_excel[_col] = _df_excel[_col].dt.tz_localize(None)
-        with pd.ExcelWriter(_excel_buf, engine="openpyxl") as _xw:
-            _df_excel.to_excel(_xw, index=False, sheet_name="Registros")
-        st.download_button(
-            label="⬇️ Descargar Excel",
-            data=_excel_buf.getvalue(),
-            file_name=f"detalle_registros_{bank_filter or 'consolidado'}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_xlsx_main",
-        )
 
     # ── Footer ──
     st.markdown(f"""
