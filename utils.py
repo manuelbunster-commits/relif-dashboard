@@ -398,6 +398,8 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         })
 
     df = pd.DataFrame(rows)
+    # Excluir registros sin RUT válido
+    df = df[df["rut"].notna() & (df["rut"].astype(str).str.strip() != "nan")]
     # pre_approved = equivalente a enviada al banco (usado por Banco Internacional)
     df["status"] = df["status"].replace("pre_approved", "sent_to_bank")
     df["createdAt"] = pd.to_datetime(df["createdAt"], utc=True).dt.tz_convert("America/Santiago")
