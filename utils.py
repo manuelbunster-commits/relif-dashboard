@@ -353,7 +353,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
     token = get_token()
     if dedup_clients:
         query = f"""
-            SELECT "BankOfferRequests".*, c."id" as "clientId", c."rut", c."source"
+            SELECT "BankOfferRequests".*, c."id" as "clientId", c."source"
             FROM "BankOfferRequests"
             LEFT JOIN (
                 SELECT DISTINCT ON ("rut") "id", "rut", "source"
@@ -366,7 +366,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         """
     else:
         query = f"""
-            SELECT "BankOfferRequests".*, "Clients"."id" as "clientId", "Clients"."rut", "Clients"."source"
+            SELECT "BankOfferRequests".*, "Clients"."id" as "clientId", "Clients"."source"
             FROM "BankOfferRequests"
             LEFT JOIN "Clients" ON "BankOfferRequests"."rut" = "Clients"."rut"
               AND "Clients"."businessUnitId" = 73
@@ -392,6 +392,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
             "bank":      r.get("bank"),
             "status":    r.get("status"),
             "rut":       r.get("rut"),
+            "clientId":  r.get("clientId"),
             "source":    r.get("source"),
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
@@ -557,7 +558,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -742,13 +743,24 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_raw  = df_raw[df_raw["bank"] == bank_filter]
         df_prev = df_prev[df_prev["bank"] == bank_filter] if not df_prev.empty else df_prev
 
-    # Excluir registros sin RUT válido (excepto Banco Internacional donde los NaN son relevantes)
-    if bank_filter != "Banco Internacional":
-        _nan_mask = df_raw["rut"].notna() & (df_raw["rut"].astype(str).str.strip() != "nan")
-        df_raw  = df_raw[_nan_mask]
+    def _is_nan_rut(series):
+        return series.isna() | (series.astype(str).str.strip() == "nan")
+
+    def _has_no_client(df):
+        """True para registros sin Cliente registrado en Relif (clientId IS NULL)."""
+        return df["clientId"].isna()
+
+    if nan_only:
+        # Mostrar solo leads sin Cliente registrado en Relif
+        mask_raw  = _has_no_client(df_raw)
+        df_raw    = df_raw[mask_raw]
         if not df_prev.empty:
-            _nan_mask_prev = df_prev["rut"].notna() & (df_prev["rut"].astype(str).str.strip() != "nan")
-            df_prev = df_prev[_nan_mask_prev]
+            df_prev = df_prev[_has_no_client(df_prev)]
+    elif bank_filter != "Banco Internacional":
+        # Excluir leads sin Cliente registrado en Relif (excepto Banco Internacional)
+        df_raw  = df_raw[~_has_no_client(df_raw)]
+        if not df_prev.empty:
+            df_prev = df_prev[~_has_no_client(df_prev)]
         if df_raw.empty:
             st.markdown(f"""
             <div style="text-align:center;padding:3rem 1rem">
@@ -759,12 +771,27 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             return
 
     # ── Métricas ──
-    total_curr = len(df_raw)
-    total_prev = len(df_prev) if not df_prev.empty else 0
-    env_curr   = int((df_raw["status"] == "sent_to_bank").sum())
-    env_prev   = int((df_prev["status"] == "sent_to_bank").sum()) if not df_prev.empty else 0
-    rec_curr   = int((df_raw["status"] == "rejected_by_bank").sum())
-    rec_prev   = int((df_prev["status"] == "rejected_by_bank").sum()) if not df_prev.empty else 0
+    # Para NaN leads: deduplicar por minuto en KPIs (un mismo lead va a N bancos en el mismo instante)
+    if nan_only and not df_raw.empty:
+        df_kpi      = df_raw.copy()
+        df_kpi["_min"] = df_kpi["createdAt"].dt.floor("min")
+        df_kpi      = df_kpi.drop_duplicates(subset=["_min"]).drop(columns=["_min"])
+        if not df_prev.empty:
+            df_kpi_prev = df_prev.copy()
+            df_kpi_prev["_min"] = df_kpi_prev["createdAt"].dt.floor("min")
+            df_kpi_prev = df_kpi_prev.drop_duplicates(subset=["_min"]).drop(columns=["_min"])
+        else:
+            df_kpi_prev = df_prev
+    else:
+        df_kpi      = df_raw
+        df_kpi_prev = df_prev
+
+    total_curr = len(df_kpi)
+    total_prev = len(df_kpi_prev) if not df_kpi_prev.empty else 0
+    env_curr   = int((df_kpi["status"] == "sent_to_bank").sum())
+    env_prev   = int((df_kpi_prev["status"] == "sent_to_bank").sum()) if not df_kpi_prev.empty else 0
+    rec_curr   = int((df_kpi["status"] == "rejected_by_bank").sum())
+    rec_prev   = int((df_kpi_prev["status"] == "rejected_by_bank").sum()) if not df_kpi_prev.empty else 0
     tasa       = round(env_curr / total_curr * 100) if total_curr else 0
     tasa_prev  = round(env_prev / total_prev * 100) if total_prev else 0
 
@@ -772,7 +799,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     pct_env   = _pct_change(env_curr, env_prev)
     pct_rec   = _pct_change(rec_curr, rec_prev)
 
-    by_day_spark = df_raw.groupby("date").size().reset_index(name="n").set_index("date")["n"]
+    by_day_spark = df_kpi.groupby("date").size().reset_index(name="n").set_index("date")["n"]
 
     # ── Rellenar placeholders ──
     subtitle_ph.markdown(
@@ -799,8 +826,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
 
     # ── KPI Cards ──
     k1, k2, k3, k4 = st.columns(4)
-    env_spark = df_raw[df_raw["status"] == "sent_to_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
-    rec_spark = df_raw[df_raw["status"] == "rejected_by_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
+    env_spark = df_kpi[df_kpi["status"] == "sent_to_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
+    rec_spark = df_kpi[df_kpi["status"] == "rejected_by_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
 
     with k1:
         st.markdown(f"""
@@ -1118,9 +1145,16 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     top3_pct    = round(hora_by.nlargest(3).sum() / horario_tot * 100) if horario_tot else 0
     pct_fds     = round(heat[heat["weekday"].isin(["Saturday", "Sunday"])]["count"].sum() / horario_tot * 100) if horario_tot else 0
 
+    if len(top2_horas) >= 2:
+        horas_txt = f"Las horas peak son las <b>{top2_horas[0]}:00 y {top2_horas[1]}:00 hrs</b> — concentran el <b>{top3_pct}%</b> del tráfico"
+    elif len(top2_horas) == 1:
+        horas_txt = f"La hora peak es las <b>{top2_horas[0]}:00 hrs</b> — concentra el <b>{top3_pct}%</b> del tráfico"
+    else:
+        horas_txt = "Sin suficientes datos de horario"
+
     insights = [
         f"El día más activo es <b>{dia_peak_es}</b> y el menos activo es <b>{dia_bajo_es}</b>",
-        f"Las horas peak son las <b>{top2_horas[0]}:00 y {top2_horas[1]}:00 hrs</b> — concentran el <b>{top3_pct}%</b> del tráfico",
+        horas_txt,
         f"El <b>{pct_of}%</b> llega en horario de oficina, con mayor carga en la <b>{bloque_peak}</b>",
         f"El fin de semana representa solo el <b>{pct_fds}%</b> del total — operación esencialmente laboral",
     ]
