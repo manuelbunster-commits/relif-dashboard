@@ -377,7 +377,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         RELIF_EXECUTE_URL,
         headers={"Authorization": f"Bearer {token}"},
         json={"userQuery": query.strip()},
-        timeout=60,
+        timeout=30,
     )
     resp.raise_for_status()
     results = resp.json().get("results", [])
@@ -394,6 +394,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
             "rut":       r.get("rut"),
             "clientId":  r.get("clientId"),
             "source":    r.get("source"),
+            "origin":    r.get("origin"),
             "createdAt": r.get("createdAt"),
             "updatedAt": r.get("updatedAt"),
         })
@@ -544,7 +545,7 @@ def _fetch_sueldos_por_rut():
     """
     resp = requests.post(RELIF_EXECUTE_URL,
         headers={"Authorization": f"Bearer {token}"},
-        json={"userQuery": query.strip()}, timeout=60)
+        json={"userQuery": query.strip()}, timeout=30)
     resp.raise_for_status()
     results = resp.json().get("results", [])
     return {r["rut"]: float(r["avg_gross"]) for r in results if r.get("avg_gross")}
@@ -748,14 +749,19 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
 
     def _has_no_client(df):
         """True para registros sin Cliente registrado en Relif (clientId IS NULL)."""
+        if "clientId" not in df.columns:
+            return _is_nan_rut(df["rut"])
         return df["clientId"].isna()
 
+    def _is_lank(df):
+        return df.get("origin", pd.Series(dtype=str)).eq("Lank") if "origin" in df.columns else pd.Series(False, index=df.index)
+
     if nan_only:
-        # Mostrar solo leads sin Cliente registrado en Relif
-        mask_raw  = _has_no_client(df_raw)
+        # Mostrar leads sin Cliente registrado en Relif O con origin=Lank
+        mask_raw  = _has_no_client(df_raw) | _is_lank(df_raw)
         df_raw    = df_raw[mask_raw]
         if not df_prev.empty:
-            df_prev = df_prev[_has_no_client(df_prev)]
+            df_prev = df_prev[_has_no_client(df_prev) | _is_lank(df_prev)]
     elif bank_filter != "Banco Internacional":
         # Excluir leads sin Cliente registrado en Relif (excepto Banco Internacional)
         df_raw  = df_raw[~_has_no_client(df_raw)]
@@ -1221,7 +1227,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         term = rut_search.strip().lower()
         df_f = df_f[df_f["rut"].astype(str).str.lower().str.contains(term, na=False)]
 
-    df_display = df_f[["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]].copy()
+    _cols = ["id", "bukLeadId", "bank", "status", "rut", "source", "origin", "createdAt", "updatedAt"]
+    df_display = df_f[[c for c in _cols if c in df_f.columns]].copy()
     if sort_by_salary and show_salary_range:
         sueldos_map_sort = _fetch_sueldos_por_rut()
         df_display = df_display.copy()
@@ -1253,13 +1260,14 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     _page_df     = df_display.iloc[_start:_end]
 
     sueldos_map = _fetch_sueldos_por_rut() if show_salary_range else {}
-    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
+    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Origen", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
     header = "<tr>" + "".join(f"<th>{c}</th>" for c in col_headers) + "</tr>"
     body_rows = []
     for _, r in _page_df.iterrows():
         badge   = STATUS_BADGE.get(r["status"], f'<span class="status-badge" style="background:#f1f5f9;color:#64748b">{r["status"]}</span>')
         c_at    = r["createdAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["createdAt"]) else "—"
         source  = r["source"] if pd.notna(r.get("source")) else "—"
+        origin  = r["origin"] if "origin" in r and pd.notna(r.get("origin")) else "—"
         _rut    = str(r["rut"]).replace("'", "&#39;").replace('"', "&quot;")
         _rut_cell = (
             f"{r['rut']}"
@@ -1274,7 +1282,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             last_col = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
         body_rows.append(
             f"<tr><td>{r['id']}</td><td>{r['bukLeadId']}</td><td>{r['bank']}</td>"
-            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{c_at}</td><td>{last_col}</td></tr>"
+            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{origin}</td><td>{c_at}</td><td>{last_col}</td></tr>"
         )
     table_html = f"""
     <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;
