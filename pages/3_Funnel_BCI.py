@@ -24,14 +24,14 @@ MONTHS = ["feb-26", "mar-26", "abr-26", "may-26", "jun-26",
           "jul-26", "ago-26", "sept-26", "oct-26", "nov-26", "dic-26"]
 
 REAL_COL = {
-    "feb-26": 9, "mar-26": 10, "abr-26": 11, "may-26": 13,
-    "jun-26": 14, "jul-26": 15, "ago-26": 16, "sept-26": 17,
-    "oct-26": 18, "nov-26": 19, "dic-26": 20,
+    "feb-26": 9, "mar-26": 10, "abr-26": 11, "may-26": 12,
+    "jun-26": 13, "jul-26": 14, "ago-26": 15, "sept-26": 16,
+    "oct-26": 17, "nov-26": 18, "dic-26": 19,
 }
 PPTO_COL = {
-    "feb-26": 23, "mar-26": 24, "abr-26": 25, "may-26": 27,
-    "jun-26": 28, "jul-26": 29, "ago-26": 30, "sept-26": 31,
-    "oct-26": 32, "nov-26": 33, "dic-26": 34,
+    "feb-26": 22, "mar-26": 23, "abr-26": 24, "may-26": 26,
+    "jun-26": 27, "jul-26": 28, "ago-26": 29, "sept-26": 30,
+    "oct-26": 31, "nov-26": 32, "dic-26": 33,
 }
 
 # KPIs contextuales (sobre el funnel)
