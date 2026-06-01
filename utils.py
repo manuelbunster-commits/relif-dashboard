@@ -400,8 +400,9 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         })
 
     df = pd.DataFrame(rows)
-    # pre_approved = equivalente a enviada al banco (usado por Banco Internacional)
-    df["status"] = df["status"].replace("pre_approved", "sent_to_bank")
+    # pre_approved = equivalente a enviada al banco, pero solo para Banco Internacional
+    bi_mask = df["bank"] == "Banco Internacional"
+    df.loc[bi_mask, "status"] = df.loc[bi_mask, "status"].replace("pre_approved", "sent_to_bank")
     df["createdAt"] = pd.to_datetime(df["createdAt"], utc=True).dt.tz_convert("America/Santiago")
     df["updatedAt"] = pd.to_datetime(df["updatedAt"], utc=True).dt.tz_convert("America/Santiago")
     df["date"]    = df["createdAt"].dt.date
