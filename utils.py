@@ -770,10 +770,22 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         if not df_prev.empty:
             df_prev = df_prev[df_prev["bukId"].isna()]
     elif exclude_campaign:
-        # Excluir leads de campaña: solo bukId NOT NULL
-        df_raw  = df_raw[df_raw["bukId"].notna()]
+        # Excluir leads de campaña (bukId IS NULL) y sin cliente registrado
+        if "bukId" in df_raw.columns:
+            df_raw  = df_raw[df_raw["bukId"].notna()]
+            if not df_prev.empty and "bukId" in df_prev.columns:
+                df_prev = df_prev[df_prev["bukId"].notna()]
+        df_raw  = df_raw[~_has_no_client(df_raw)]
         if not df_prev.empty:
-            df_prev = df_prev[df_prev["bukId"].notna()]
+            df_prev = df_prev[~_has_no_client(df_prev)]
+        if df_raw.empty:
+            st.markdown(f"""
+            <div style="text-align:center;padding:3rem 1rem">
+                <div style="font-size:2.5rem;margin-bottom:0.8rem">🔍</div>
+                <div style="font-size:1rem;font-weight:600;color:#64748b;margin-bottom:0.3rem">Sin registros para {bank_filter}</div>
+                <div style="font-size:0.85rem;color:#94a3b8">No hay datos en el período seleccionado</div>
+            </div>""", unsafe_allow_html=True)
+            return
     elif bank_filter != "Banco Internacional":
         # Excluir leads sin Cliente registrado en Relif (excepto Banco Internacional)
         df_raw  = df_raw[~_has_no_client(df_raw)]
