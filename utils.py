@@ -996,7 +996,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             'font-size:0.68rem;color:#94a3b8;letter-spacing:0.04em">▾ &nbsp;de los cuales…</div>' +
             _funnel_row("Enviados al banco",   _f_env,   _b_env, "linear-gradient(90deg,#22c55e,#16a34a)", "#22c55e") +
             _funnel_row("Rechazados por banco",_f_rec,   _b_rec, "linear-gradient(90deg,#f87171,#ef4444)", "#ef4444") +
-            _funnel_row("Pendientes",          _f_pend,  _b_pend,"linear-gradient(90deg,#94a3b8,#64748b)", "#94a3b8")
+            _funnel_row("Limbo",               _f_pend,  _b_pend,"linear-gradient(90deg,#94a3b8,#64748b)", "#94a3b8")
         )
         st.markdown(
             '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:1.4rem 1.6rem;'
@@ -1019,7 +1019,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         _summary_rows = (
             _stat_row("Enviados al banco", _tasa_env, "#22c55e") +
             _stat_row("Rechazados", _tasa_rec, "#ef4444") +
-            _stat_row("Pendientes", _tasa_pend, "#64748b")
+            _stat_row("Limbo", _tasa_pend, "#64748b")
         )
         st.markdown(
             '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:1.2rem 1.4rem;'
