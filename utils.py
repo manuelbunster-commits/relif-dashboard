@@ -802,8 +802,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     total_prev = len(df_kpi_prev) if not df_kpi_prev.empty else 0
     env_curr   = int((df_kpi["status"] == "sent_to_bank").sum())
     env_prev   = int((df_kpi_prev["status"] == "sent_to_bank").sum()) if not df_kpi_prev.empty else 0
-    pre_curr   = int((df_kpi["status"] == "pre_approved").sum())
-    pre_prev   = int((df_kpi_prev["status"] == "pre_approved").sum()) if not df_kpi_prev.empty else 0
+    pre_curr   = int((df_kpi["status"].isin(["pre_approved", "sent_to_bank"])).sum())
+    pre_prev   = int((df_kpi_prev["status"].isin(["pre_approved", "sent_to_bank"])).sum()) if not df_kpi_prev.empty else 0
     rec_curr   = int((df_kpi["status"] == "rejected_by_bank").sum())
     rec_prev   = int((df_kpi_prev["status"] == "rejected_by_bank").sum()) if not df_kpi_prev.empty else 0
     tasa       = round(env_curr / total_curr * 100) if total_curr else 0
