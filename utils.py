@@ -351,6 +351,11 @@ def get_token() -> str:
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFrame:
     token = get_token()
+    # Convertir fechas a UTC considerando timezone de Santiago
+    _tz = pytz.timezone("America/Santiago")
+    _fmt = "%Y-%m-%dT%H:%M:%SZ"
+    start_utc = _tz.localize(datetime.strptime(start, "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
+    end_utc   = _tz.localize(datetime.strptime(end,   "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
     if dedup_clients:
         query = f"""
             SELECT "BankOfferRequests".*, c."id" as "clientId", c."source"
@@ -361,8 +366,8 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
                 WHERE "businessUnitId" = 73
                 ORDER BY "rut", "createdAt" DESC
             ) c ON "BankOfferRequests"."rut" = c."rut"
-            WHERE "BankOfferRequests"."createdAt" >= '{start}'
-              AND "BankOfferRequests"."createdAt" <  '{end}'
+            WHERE "BankOfferRequests"."createdAt" >= '{start_utc}'
+              AND "BankOfferRequests"."createdAt" <  '{end_utc}'
         """
     else:
         query = f"""
@@ -370,8 +375,8 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
             FROM "BankOfferRequests"
             LEFT JOIN "Clients" ON "BankOfferRequests"."rut" = "Clients"."rut"
               AND "Clients"."businessUnitId" = 73
-            WHERE "BankOfferRequests"."createdAt" >= '{start}'
-              AND "BankOfferRequests"."createdAt" <  '{end}'
+            WHERE "BankOfferRequests"."createdAt" >= '{start_utc}'
+              AND "BankOfferRequests"."createdAt" <  '{end_utc}'
         """
     resp = requests.post(
         RELIF_EXECUTE_URL,
