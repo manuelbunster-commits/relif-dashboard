@@ -802,12 +802,15 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     total_prev = len(df_kpi_prev) if not df_kpi_prev.empty else 0
     env_curr   = int((df_kpi["status"] == "sent_to_bank").sum())
     env_prev   = int((df_kpi_prev["status"] == "sent_to_bank").sum()) if not df_kpi_prev.empty else 0
+    pre_curr   = int((df_kpi["status"] == "pre_approved").sum())
+    pre_prev   = int((df_kpi_prev["status"] == "pre_approved").sum()) if not df_kpi_prev.empty else 0
     rec_curr   = int((df_kpi["status"] == "rejected_by_bank").sum())
     rec_prev   = int((df_kpi_prev["status"] == "rejected_by_bank").sum()) if not df_kpi_prev.empty else 0
     tasa       = round(env_curr / total_curr * 100) if total_curr else 0
     tasa_prev  = round(env_prev / total_prev * 100) if total_prev else 0
 
     pct_total = _pct_change(total_curr, total_prev)
+    pct_pre   = _pct_change(pre_curr, pre_prev)
     pct_env   = _pct_change(env_curr, env_prev)
     pct_rec   = _pct_change(rec_curr, rec_prev)
 
@@ -850,13 +853,12 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             {_trend_arrow(pct_total)}
         </div>""", unsafe_allow_html=True)
     with k2:
-        color = "green" if tasa >= 50 else "red"
         st.markdown(f"""
-        <div class="kpi-card {color}" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.1s;opacity:0">
-            <span class="kpi-icon">🏦</span>
-            <div class="kpi-label">Tasa de Envío al Banco</div>
-            <div class="kpi-value" data-counter="{tasa}" data-suffix="%">{tasa}%</div>
-            {_trend_arrow(_pct_change(tasa, tasa_prev))}
+        <div class="kpi-card purple" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.1s;opacity:0">
+            <span class="kpi-icon">⏳</span>
+            <div class="kpi-label">Pre-aprobados</div>
+            <div class="kpi-value" data-counter="{pre_curr}">{pre_curr}</div>
+            {_trend_arrow(pct_pre)}
         </div>""", unsafe_allow_html=True)
     with k3:
         st.markdown(f"""
