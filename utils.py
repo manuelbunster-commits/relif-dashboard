@@ -389,6 +389,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
         rows.append({
             "id":        r.get("id"),
             "bukLeadId": r.get("bukLeadId"),
+            "bukId":     r.get("bukId"),
             "bank":      r.get("bank"),
             "status":    r.get("status"),
             "rut":       r.get("rut"),
@@ -560,7 +561,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -763,6 +764,11 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_raw    = df_raw[mask_raw]
         if not df_prev.empty:
             df_prev = df_prev[_has_no_client(df_prev) | _is_lank(df_prev)]
+    elif campaign_only:
+        # Solo leads de campaña: bukId IS NULL
+        df_raw  = df_raw[df_raw["bukId"].isna()]
+        if not df_prev.empty:
+            df_prev = df_prev[df_prev["bukId"].isna()]
     elif bank_filter != "Banco Internacional":
         # Excluir leads sin Cliente registrado en Relif (excepto Banco Internacional)
         df_raw  = df_raw[~_has_no_client(df_raw)]
