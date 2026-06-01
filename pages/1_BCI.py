@@ -172,7 +172,7 @@ if not st.session_state.get("bci_auth"):
     st.stop()
 
 def _dashboard():
-    render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=True, dedup_clients=True)
+    render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=True, dedup_clients=True, exclude_campaign=True)
 
 
 pg = st.navigation([
