@@ -1263,7 +1263,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         term = rut_search.strip().lower()
         df_f = df_f[df_f["rut"].astype(str).str.lower().str.contains(term, na=False)]
 
-    _cols = ["id", "bukLeadId", "bank", "status", "rut", "source", "origin", "createdAt", "updatedAt"]
+    _cols = ["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]
     df_display = df_f[[c for c in _cols if c in df_f.columns]].copy()
     if sort_by_salary and show_salary_range:
         sueldos_map_sort = _fetch_sueldos_por_rut()
@@ -1296,7 +1296,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     _page_df     = df_display.iloc[_start:_end]
 
     sueldos_map = _fetch_sueldos_por_rut() if show_salary_range else {}
-    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Empresa", "Origen", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
+    col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Origen", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
     header = "<tr>" + "".join(f"<th>{c}</th>" for c in col_headers) + "</tr>"
     body_rows = []
     for _, r in _page_df.iterrows():
