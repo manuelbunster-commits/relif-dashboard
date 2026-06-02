@@ -1379,7 +1379,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         if not _df_10d.empty:
             if bank_filter:
                 _df_10d = _df_10d[_df_10d["bank"] == bank_filter]
-            _df_10d["status"] = _df_10d["status"].replace("pre_approved", "sent_to_bank")
+            _bi_mask_10d = _df_10d["bank"] == "Banco Internacional"
+            _df_10d.loc[_bi_mask_10d, "status"] = _df_10d.loc[_bi_mask_10d, "status"].replace("pre_approved", "sent_to_bank")
         _enviados = _df_10d[_df_10d["status"] == "sent_to_bank"].sort_values("createdAt", ascending=False).head(20) if not _df_10d.empty else pd.DataFrame()
 
         # ── Distribución por rango ──
