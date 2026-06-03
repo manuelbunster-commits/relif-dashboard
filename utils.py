@@ -1303,7 +1303,6 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         badge   = STATUS_BADGE.get(r["status"], f'<span class="status-badge" style="background:#f1f5f9;color:#64748b">{r["status"]}</span>')
         c_at    = r["createdAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["createdAt"]) else "—"
         source  = r["source"] if pd.notna(r.get("source")) else "—"
-        origin  = r["origin"] if "origin" in r and pd.notna(r.get("origin")) else "—"
         _rut    = str(r["rut"]).replace("'", "&#39;").replace('"', "&quot;")
         _rut_cell = (
             f"{r['rut']}"
@@ -1318,7 +1317,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             last_col = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
         body_rows.append(
             f"<tr><td>{r['id']}</td><td>{r['bukLeadId']}</td><td>{r['bank']}</td>"
-            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{origin}</td><td>{c_at}</td><td>{last_col}</td></tr>"
+            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{c_at}</td><td>{last_col}</td></tr>"
         )
     table_html = f"""
     <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;
