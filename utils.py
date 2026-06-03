@@ -401,8 +401,9 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
             "clientId":  r.get("clientId"),
             "source":    r.get("source"),
             "origin":    r.get("origin"),
-            "createdAt": r.get("createdAt"),
-            "updatedAt": r.get("updatedAt"),
+            "createdAt":       r.get("createdAt"),
+            "updatedAt":       r.get("updatedAt"),
+            "rawBankResponse": r.get("rawBankResponse"),
         })
 
     df = pd.DataFrame(rows)
@@ -566,7 +567,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -1264,6 +1265,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_f = df_f[df_f["rut"].astype(str).str.lower().str.contains(term, na=False)]
 
     _cols = ["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt"]
+    if show_rejection_reason:
+        _cols = ["id", "bukLeadId", "bank", "status", "rut", "source", "createdAt", "updatedAt", "rawBankResponse"]
     df_display = df_f[[c for c in _cols if c in df_f.columns]].copy()
     if sort_by_salary and show_salary_range:
         sueldos_map_sort = _fetch_sueldos_por_rut()
@@ -1272,6 +1275,21 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_display = df_display.sort_values("_avg_gross", ascending=False).drop(columns=["_avg_gross"])
     else:
         df_display = df_display.sort_values("createdAt", ascending=False)
+
+    def _motivo_reason(raw, status):
+        import json as _json
+        if not raw:
+            return "Remuneración" if status == "rejected_by_bank" else "—"
+        try:
+            data = _json.loads(raw) if isinstance(raw, str) else raw
+            cliente = data.get("cliente", {})
+            if cliente.get("clienteBci"):
+                return "Ya es cliente BCI"
+            if not data.get("cumpleFiltrosRiesgo"):
+                return "No pasa filtros de riesgo"
+            return "Remuneración" if status == "rejected_by_bank" else "Pasa filtros"
+        except Exception:
+            return "Remuneración" if status == "rejected_by_bank" else "—"
 
     # Tabla HTML con badges de status
     STATUS_BADGE = {
@@ -1297,6 +1315,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
 
     sueldos_map = _fetch_sueldos_por_rut() if show_salary_range else {}
     col_headers = ["ID", "BukLeadId", "Banco", "Status", "RUT", "Origen", "Creado", "Rango sueldo bruto" if show_salary_range else "Actualizado"]
+    if show_rejection_reason:
+        col_headers.append("Motivo")
     header = "<tr>" + "".join(f"<th>{c}</th>" for c in col_headers) + "</tr>"
     body_rows = []
     for _, r in _page_df.iterrows():
@@ -1315,9 +1335,12 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             last_col = _rango_badge(avg) if avg else '<span class="status-badge" style="background:#f1f5f9;color:#94a3b8">Sin datos</span>'
         else:
             last_col = r["updatedAt"].strftime("%d/%m/%y %H:%M") if pd.notna(r["updatedAt"]) else "—"
+        motivo_cell = ""
+        if show_rejection_reason:
+            motivo_cell = f"<td>{_motivo_reason(r.get('rawBankResponse'), r['status'])}</td>"
         body_rows.append(
             f"<tr><td>{r['id']}</td><td>{r['bukLeadId']}</td><td>{r['bank']}</td>"
-            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{c_at}</td><td>{last_col}</td></tr>"
+            f"<td>{badge}</td><td>{_rut_cell}</td><td>{source}</td><td>{c_at}</td><td>{last_col}</td>{motivo_cell}</tr>"
         )
     table_html = f"""
     <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;
