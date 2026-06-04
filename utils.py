@@ -1097,119 +1097,120 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     )
     st.plotly_chart(fig_combo, use_container_width=True)
 
-    # ── 4. Resumen ──
-    _section_header("Resumen", "📊")
-    t1, t2, rank_col = st.columns(3)
-    with t1:
-        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por banco</p>', unsafe_allow_html=True)
-        st.dataframe(
-            df_raw.groupby("bank").size().reset_index(name="Count").sort_values("Count", ascending=False),
-            hide_index=True, use_container_width=True, height=160,
+    # ── 4. Resumen / Heatmap / Conclusiones (ocultos en campaña) ──
+    if not campaign_only:
+        _section_header("Resumen", "📊")
+        t1, t2, rank_col = st.columns(3)
+        with t1:
+            st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por banco</p>', unsafe_allow_html=True)
+            st.dataframe(
+                df_raw.groupby("bank").size().reset_index(name="Count").sort_values("Count", ascending=False),
+                hide_index=True, use_container_width=True, height=160,
+            )
+        with t2:
+            st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por status</p>', unsafe_allow_html=True)
+            st.dataframe(
+                df_raw.groupby("status").size().reset_index(name="Count").sort_values("Count", ascending=False),
+                hide_index=True, use_container_width=True, height=160,
+            )
+        with rank_col:
+            st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Top empresas</p>', unsafe_allow_html=True)
+            df_src = df_raw[df_raw["source"].notna() & (df_raw["source"] != "")].copy()
+            if df_src.empty:
+                st.caption("Sin datos de empresa")
+            else:
+                rank = df_src.groupby("source").agg(
+                    leads=("id", "count"),
+                    enviadas=("status", lambda x: (x == "sent_to_bank").sum()),
+                ).sort_values("leads", ascending=False).head(5).reset_index()
+                max_leads = rank["leads"].max()
+                rows_html = ""
+                medals = ["🥇", "🥈", "🥉", "4.", "5."]
+                for i, row in rank.iterrows():
+                    pct_bar  = round(row["leads"] / max_leads * 100)
+                    tasa     = round(row["enviadas"] / row["leads"] * 100) if row["leads"] else 0
+                    clr_tasa = "#22c55e"
+                    medal    = medals[i] if i < len(medals) else f"{i+1}."
+                    rows_html += (
+                        f'<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid #f1f5f9">'
+                        f'<span style="font-size:0.8rem;width:20px;flex-shrink:0">{medal}</span>'
+                        f'<div style="flex:1;min-width:0">'
+                        f'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+                        f'<span style="font-size:0.75rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{row["source"]}</span>'
+                        f'<span style="font-size:0.7rem;font-weight:700;color:{clr_tasa};margin-left:0.3rem;flex-shrink:0">{tasa}%</span>'
+                        f'</div>'
+                        f'<div style="background:#f1f5f9;border-radius:999px;height:3px;margin-top:3px">'
+                        f'<div style="width:{pct_bar}%;height:100%;background:#3b82f6;border-radius:999px"></div>'
+                        f'</div></div>'
+                        f'<span style="font-size:0.72rem;font-weight:700;color:#64748b;flex-shrink:0;margin-left:0.3rem">{int(row["leads"])}</span>'
+                        f'</div>'
+                    )
+                st.markdown(rows_html, unsafe_allow_html=True)
+
+        # ── Heatmap ──
+        _section_header("Heatmap — requests por hora y día", "🌡️")
+        WEEKDAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        WEEKDAY_ES    = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+        heat = df_raw.groupby(["weekday", "hour"]).size().reset_index(name="count")
+        heat_pivot = heat.pivot(index="weekday", columns="hour", values="count").reindex(WEEKDAY_ORDER).fillna(0)
+        heat_pivot.index = WEEKDAY_ES
+        heat_pivot = heat_pivot.loc[:, (heat_pivot > 0).any(axis=0)]
+
+        peak_dia_idx = heat_pivot.sum(axis=1).idxmax()
+        peak_hora    = heat_pivot.sum(axis=0).idxmax()
+
+        fig_heat = px.imshow(
+            heat_pivot,
+            labels=dict(x="Hora del día", y="", color="Requests"),
+            color_continuous_scale=[[0, "#f0f9ff"], [0.5, "#3b82f6"], [1, "#1d4ed8"]],
+            aspect="auto", text_auto=True,
         )
-    with t2:
-        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Por status</p>', unsafe_allow_html=True)
-        st.dataframe(
-            df_raw.groupby("status").size().reset_index(name="Count").sort_values("Count", ascending=False),
-            hide_index=True, use_container_width=True, height=160,
+        fig_heat.update_traces(textfont=dict(size=11, family="Inter"))
+        fig_heat.update_layout(
+            height=280, margin=dict(t=10, b=10, l=0, r=0),
+            paper_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False,
+            xaxis=dict(tickmode="linear", tick0=heat_pivot.columns[0], dtick=1),
+            font=dict(family="Inter"),
         )
-    with rank_col:
-        st.markdown('<p style="font-size:0.75rem;font-weight:600;color:#64748b;margin:0 0 0.3rem">Top empresas</p>', unsafe_allow_html=True)
-        df_src = df_raw[df_raw["source"].notna() & (df_raw["source"] != "")].copy()
-        if df_src.empty:
-            st.caption("Sin datos de empresa")
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        # Conclusiones
+        hora_by     = heat.groupby("hour")["count"].sum()
+        dia_by      = heat.groupby("weekday")["count"].sum()
+        dia_peak_es = WEEKDAY_ES[WEEKDAY_ORDER.index(dia_by.idxmax())]
+        dia_bajo_es = WEEKDAY_ES[WEEKDAY_ORDER.index(dia_by.idxmin())]
+        horario_tot = heat["count"].sum()
+        pct_of      = round(heat[heat["hour"].between(9, 18)]["count"].sum() / horario_tot * 100) if horario_tot else 0
+        pct_manana  = round(heat[heat["hour"].between(9, 13)]["count"].sum() / horario_tot * 100) if horario_tot else 0
+        pct_tarde   = round(heat[heat["hour"].between(14, 18)]["count"].sum() / horario_tot * 100) if horario_tot else 0
+        bloque_peak = "mañana (9–13h)" if pct_manana >= pct_tarde else "tarde (14–18h)"
+        top2_horas  = hora_by.nlargest(2).index.tolist()
+        top3_pct    = round(hora_by.nlargest(3).sum() / horario_tot * 100) if horario_tot else 0
+        pct_fds     = round(heat[heat["weekday"].isin(["Saturday", "Sunday"])]["count"].sum() / horario_tot * 100) if horario_tot else 0
+
+        if len(top2_horas) >= 2:
+            horas_txt = f"Las horas peak son las <b>{top2_horas[0]}:00 y {top2_horas[1]}:00 hrs</b> — concentran el <b>{top3_pct}%</b> del tráfico"
+        elif len(top2_horas) == 1:
+            horas_txt = f"La hora peak es las <b>{top2_horas[0]}:00 hrs</b> — concentra el <b>{top3_pct}%</b> del tráfico"
         else:
-            rank = df_src.groupby("source").agg(
-                leads=("id", "count"),
-                enviadas=("status", lambda x: (x == "sent_to_bank").sum()),
-            ).sort_values("leads", ascending=False).head(5).reset_index()
-            max_leads = rank["leads"].max()
-            rows_html = ""
-            medals = ["🥇", "🥈", "🥉", "4.", "5."]
-            for i, row in rank.iterrows():
-                pct_bar  = round(row["leads"] / max_leads * 100)
-                tasa     = round(row["enviadas"] / row["leads"] * 100) if row["leads"] else 0
-                clr_tasa = "#22c55e"
-                medal    = medals[i] if i < len(medals) else f"{i+1}."
-                rows_html += (
-                    f'<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid #f1f5f9">'
-                    f'<span style="font-size:0.8rem;width:20px;flex-shrink:0">{medal}</span>'
-                    f'<div style="flex:1;min-width:0">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:baseline">'
-                    f'<span style="font-size:0.75rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{row["source"]}</span>'
-                    f'<span style="font-size:0.7rem;font-weight:700;color:{clr_tasa};margin-left:0.3rem;flex-shrink:0">{tasa}%</span>'
-                    f'</div>'
-                    f'<div style="background:#f1f5f9;border-radius:999px;height:3px;margin-top:3px">'
-                    f'<div style="width:{pct_bar}%;height:100%;background:#3b82f6;border-radius:999px"></div>'
-                    f'</div></div>'
-                    f'<span style="font-size:0.72rem;font-weight:700;color:#64748b;flex-shrink:0;margin-left:0.3rem">{int(row["leads"])}</span>'
-                    f'</div>'
-                )
-            st.markdown(rows_html, unsafe_allow_html=True)
+            horas_txt = "Sin suficientes datos de horario"
 
-    # ── 6. Heatmap ──
-    _section_header("Heatmap — requests por hora y día", "🌡️")
-    WEEKDAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    WEEKDAY_ES    = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-
-    heat = df_raw.groupby(["weekday", "hour"]).size().reset_index(name="count")
-    heat_pivot = heat.pivot(index="weekday", columns="hour", values="count").reindex(WEEKDAY_ORDER).fillna(0)
-    heat_pivot.index = WEEKDAY_ES
-    heat_pivot = heat_pivot.loc[:, (heat_pivot > 0).any(axis=0)]
-
-    peak_dia_idx = heat_pivot.sum(axis=1).idxmax()
-    peak_hora    = heat_pivot.sum(axis=0).idxmax()
-
-    fig_heat = px.imshow(
-        heat_pivot,
-        labels=dict(x="Hora del día", y="", color="Requests"),
-        color_continuous_scale=[[0, "#f0f9ff"], [0.5, "#3b82f6"], [1, "#1d4ed8"]],
-        aspect="auto", text_auto=True,
-    )
-    fig_heat.update_traces(textfont=dict(size=11, family="Inter"))
-    fig_heat.update_layout(
-        height=280, margin=dict(t=10, b=10, l=0, r=0),
-        paper_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False,
-        xaxis=dict(tickmode="linear", tick0=heat_pivot.columns[0], dtick=1),
-        font=dict(family="Inter"),
-    )
-    st.plotly_chart(fig_heat, use_container_width=True)
-
-    # Conclusiones
-    hora_by     = heat.groupby("hour")["count"].sum()
-    dia_by      = heat.groupby("weekday")["count"].sum()
-    dia_peak_es = WEEKDAY_ES[WEEKDAY_ORDER.index(dia_by.idxmax())]
-    dia_bajo_es = WEEKDAY_ES[WEEKDAY_ORDER.index(dia_by.idxmin())]
-    horario_tot = heat["count"].sum()
-    pct_of      = round(heat[heat["hour"].between(9, 18)]["count"].sum() / horario_tot * 100) if horario_tot else 0
-    pct_manana  = round(heat[heat["hour"].between(9, 13)]["count"].sum() / horario_tot * 100) if horario_tot else 0
-    pct_tarde   = round(heat[heat["hour"].between(14, 18)]["count"].sum() / horario_tot * 100) if horario_tot else 0
-    bloque_peak = "mañana (9–13h)" if pct_manana >= pct_tarde else "tarde (14–18h)"
-    top2_horas  = hora_by.nlargest(2).index.tolist()
-    top3_pct    = round(hora_by.nlargest(3).sum() / horario_tot * 100) if horario_tot else 0
-    pct_fds     = round(heat[heat["weekday"].isin(["Saturday", "Sunday"])]["count"].sum() / horario_tot * 100) if horario_tot else 0
-
-    if len(top2_horas) >= 2:
-        horas_txt = f"Las horas peak son las <b>{top2_horas[0]}:00 y {top2_horas[1]}:00 hrs</b> — concentran el <b>{top3_pct}%</b> del tráfico"
-    elif len(top2_horas) == 1:
-        horas_txt = f"La hora peak es las <b>{top2_horas[0]}:00 hrs</b> — concentra el <b>{top3_pct}%</b> del tráfico"
-    else:
-        horas_txt = "Sin suficientes datos de horario"
-
-    insights = [
-        f"El día más activo es <b>{dia_peak_es}</b> y el menos activo es <b>{dia_bajo_es}</b>",
-        horas_txt,
-        f"El <b>{pct_of}%</b> llega en horario de oficina, con mayor carga en la <b>{bloque_peak}</b>",
-        f"El fin de semana representa solo el <b>{pct_fds}%</b> del total — operación esencialmente laboral",
-    ]
-    items_html = "".join(f"<li>{i}</li>" for i in insights)
-    st.markdown(f"""
-    <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #8b5cf6;
-                border-radius:14px;padding:1rem 1.4rem;margin-top:0.5rem;
-                box-shadow:0 1px 4px rgba(0,0,0,0.05)">
-        <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
-                  color:#94a3b8;margin:0 0 0.6rem">💡 Conclusiones</p>
-        <ul style="margin:0;padding-left:1.2rem;color:#374151;font-size:0.88rem;line-height:1.9">{items_html}</ul>
-    </div>""", unsafe_allow_html=True)
+        insights = [
+            f"El día más activo es <b>{dia_peak_es}</b> y el menos activo es <b>{dia_bajo_es}</b>",
+            horas_txt,
+            f"El <b>{pct_of}%</b> llega en horario de oficina, con mayor carga en la <b>{bloque_peak}</b>",
+            f"El fin de semana representa solo el <b>{pct_fds}%</b> del total — operación esencialmente laboral",
+        ]
+        items_html = "".join(f"<li>{i}</li>" for i in insights)
+        st.markdown(f"""
+        <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #8b5cf6;
+                    border-radius:14px;padding:1rem 1.4rem;margin-top:0.5rem;
+                    box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+                      color:#94a3b8;margin:0 0 0.6rem">💡 Conclusiones</p>
+            <ul style="margin:0;padding-left:1.2rem;color:#374151;font-size:0.88rem;line-height:1.9">{items_html}</ul>
+        </div>""", unsafe_allow_html=True)
 
     # ── Contador animado en KPI cards ──
     components.html("""
