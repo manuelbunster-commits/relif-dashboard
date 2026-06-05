@@ -10,4 +10,4 @@ try:
 except Exception:
     pass
 
-render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=False, dedup_clients=True, campaign_only=True, show_rejection_reason=True)
+render_dashboard(bank_filter="BCI", chart_scroll=True, show_salary_range=False, dedup_clients=True, campaign_only=True, show_rejection_reason=True, pre_approved_only=True)
