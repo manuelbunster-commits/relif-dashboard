@@ -567,7 +567,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, pre_approved_only: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -831,9 +831,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     total_prev = len(df_kpi_prev) if not df_kpi_prev.empty else 0
     env_curr   = int((df_kpi["status"] == "sent_to_bank").sum())
     env_prev   = int((df_kpi_prev["status"] == "sent_to_bank").sum()) if not df_kpi_prev.empty else 0
-    _pre_statuses = ["pre_approved"] if pre_approved_only else ["pre_approved", "sent_to_bank"]
-    pre_curr   = int((df_kpi["status"].isin(_pre_statuses)).sum())
-    pre_prev   = int((df_kpi_prev["status"].isin(_pre_statuses)).sum()) if not df_kpi_prev.empty else 0
+    pre_curr   = int((df_kpi["status"].isin(["pre_approved", "sent_to_bank"])).sum())
+    pre_prev   = int((df_kpi_prev["status"].isin(["pre_approved", "sent_to_bank"])).sum()) if not df_kpi_prev.empty else 0
     rec_curr   = int((df_kpi["status"] == "rejected_by_bank").sum())
     rec_prev   = int((df_kpi_prev["status"] == "rejected_by_bank").sum()) if not df_kpi_prev.empty else 0
     tasa       = round(env_curr / total_curr * 100) if total_curr else 0
