@@ -823,9 +823,12 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_kpi_prev = df_prev
 
     if dedup_clients and not df_kpi.empty:
-        df_kpi = df_kpi.drop_duplicates(subset=["rut"])
+        df_raw  = df_raw.drop_duplicates(subset=["rut"])
+        df_kpi  = df_kpi.drop_duplicates(subset=["rut"])
         if not df_kpi_prev.empty:
             df_kpi_prev = df_kpi_prev.drop_duplicates(subset=["rut"])
+        if not df_prev.empty:
+            df_prev = df_prev.drop_duplicates(subset=["rut"])
 
     total_curr = len(df_kpi)
     total_prev = len(df_kpi_prev) if not df_kpi_prev.empty else 0
