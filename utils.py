@@ -1079,7 +1079,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     fig_combo.add_trace(go.Bar(x=by_day["date"], y=by_day["Otros"], name="Otros", marker_color="#3b82f6", marker_line_width=0))
     fig_combo.add_trace(go.Scatter(x=by_day["date"], y=by_day["Tendencia"], name="Tendencia (3d)", line=dict(color="#8b5cf6", width=2.5, dash="dot")))
     _xaxis = dict(showgrid=False)
-    if chart_scroll:
+    if chart_scroll and not by_day.empty:
         _xaxis.update(dict(
             range=[by_day["date"].iloc[0] - pd.Timedelta(days=0.5),
                    by_day["date"].iloc[-1] + pd.Timedelta(days=1)],
