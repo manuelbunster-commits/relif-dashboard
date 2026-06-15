@@ -1056,16 +1056,12 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                 if not raw.get("cumpleFiltrosRiesgo"): return "No pasa filtros de riesgo"
                 return "Remuneración"
             _df_rec["motivo"] = _df_rec["rawBankResponse"].apply(_motivo_chart)
-            _motivo_counts = _df_rec["motivo"].value_counts().reset_index()
-            _motivo_counts.columns = ["Motivo", "Cantidad"]
+            _counts_dict = _df_rec["motivo"].value_counts().to_dict()
             if extra_remuneracion_ruts:
                 _extra = len([r for r in extra_remuneracion_ruts if r not in set(_df_rec["rut"])])
                 if _extra > 0:
-                    _idx = _motivo_counts[_motivo_counts["Motivo"] == "Remuneración"].index
-                    if len(_idx):
-                        _motivo_counts.loc[_idx[0], "Cantidad"] += _extra
-                    else:
-                        _motivo_counts = pd.concat([_motivo_counts, pd.DataFrame([{"Motivo": "Remuneración", "Cantidad": _extra}])], ignore_index=True)
+                    _counts_dict["Remuneración"] = _counts_dict.get("Remuneración", 0) + _extra
+            _motivo_counts = pd.DataFrame(list(_counts_dict.items()), columns=["Motivo", "Cantidad"]).sort_values("Cantidad", ascending=False).reset_index(drop=True)
             _MOTIVO_COLORS = {
                 "Ya es cliente BCI":         "#f87171",
                 "No pasa filtros de riesgo": "#fb923c",
