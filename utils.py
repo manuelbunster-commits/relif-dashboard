@@ -1088,7 +1088,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                 )
                 st.plotly_chart(_fig_m, use_container_width=True)
             with _mc2:
-                _total_rec = len(_df_rec)
+                _total_rec = int(_motivo_counts["Cantidad"].sum())
                 _rows_m = ""
                 for _, _mr in _motivo_counts.iterrows():
                     _pct_m = round(_mr["Cantidad"] / _total_rec * 100)
