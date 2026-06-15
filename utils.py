@@ -567,7 +567,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, source_filter: str = None, exclude_ruts: list = None):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -805,6 +805,16 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
                 <div style="font-size:0.85rem;color:#94a3b8">No hay datos en el período seleccionado</div>
             </div>""", unsafe_allow_html=True)
             return
+
+    if source_filter:
+        df_raw  = df_raw[df_raw["source"] == source_filter]
+        if not df_prev.empty:
+            df_prev = df_prev[df_prev["source"] == source_filter]
+    if exclude_ruts:
+        _excl = set(exclude_ruts)
+        df_raw  = df_raw[~df_raw["rut"].isin(_excl)]
+        if not df_prev.empty:
+            df_prev = df_prev[~df_prev["rut"].isin(_excl)]
 
     # ── Métricas ──
     # Para NaN leads: deduplicar por minuto en KPIs (un mismo lead va a N bancos en el mismo instante)
