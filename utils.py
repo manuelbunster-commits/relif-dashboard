@@ -567,7 +567,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, source_filter: str = None, exclude_ruts: list = None):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, source_filter: str = None, exclude_ruts: list = None, extra_remuneracion_ruts: list = None):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -1058,6 +1058,14 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             _df_rec["motivo"] = _df_rec["rawBankResponse"].apply(_motivo_chart)
             _motivo_counts = _df_rec["motivo"].value_counts().reset_index()
             _motivo_counts.columns = ["Motivo", "Cantidad"]
+            if extra_remuneracion_ruts:
+                _extra = len([r for r in extra_remuneracion_ruts if r not in set(_df_rec["rut"])])
+                if _extra > 0:
+                    _idx = _motivo_counts[_motivo_counts["Motivo"] == "Remuneración"].index
+                    if len(_idx):
+                        _motivo_counts.loc[_idx[0], "Cantidad"] += _extra
+                    else:
+                        _motivo_counts = pd.concat([_motivo_counts, pd.DataFrame([{"Motivo": "Remuneración", "Cantidad": _extra}])], ignore_index=True)
             _MOTIVO_COLORS = {
                 "Ya es cliente BCI":         "#f87171",
                 "No pasa filtros de riesgo": "#fb923c",
