@@ -1045,6 +1045,72 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             unsafe_allow_html=True,
         )
 
+    # ── Motivos de rechazo (solo campaña) ──
+    if show_rejection_reason:
+        _df_rec = df_raw[df_raw["status"] == "rejected_by_bank"].copy()
+        if not _df_rec.empty:
+            def _motivo_chart(raw):
+                if not raw: return "Remuneración"
+                cliente_bci = raw.get("cliente", {}).get("clienteBci")
+                if cliente_bci: return "Ya es cliente BCI"
+                if not raw.get("cumpleFiltrosRiesgo"): return "No pasa filtros de riesgo"
+                return "Remuneración"
+            _df_rec["motivo"] = _df_rec["rawBankResponse"].apply(_motivo_chart)
+            _motivo_counts = _df_rec["motivo"].value_counts().reset_index()
+            _motivo_counts.columns = ["Motivo", "Cantidad"]
+            _MOTIVO_COLORS = {
+                "Ya es cliente BCI":         "#f87171",
+                "No pasa filtros de riesgo": "#fb923c",
+                "Remuneración":              "#fbbf24",
+            }
+            _colors = [_MOTIVO_COLORS.get(m, "#94a3b8") for m in _motivo_counts["Motivo"]]
+            _section_header("Motivos de rechazo", "📊")
+            _mc1, _mc2 = st.columns([2, 1])
+            with _mc1:
+                _fig_m = go.Figure(go.Pie(
+                    labels=_motivo_counts["Motivo"],
+                    values=_motivo_counts["Cantidad"],
+                    hole=0.55,
+                    marker=dict(colors=_colors, line=dict(color="white", width=2)),
+                    textinfo="percent",
+                    textfont=dict(size=13, family="Inter"),
+                    hovertemplate="<b>%{label}</b><br>%{value} rechazos<br>%{percent}<extra></extra>",
+                ))
+                _fig_m.update_layout(
+                    margin=dict(t=10, b=10, l=10, r=10), height=280,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=dict(size=11, family="Inter")),
+                    font=dict(family="Inter"),
+                )
+                st.plotly_chart(_fig_m, use_container_width=True)
+            with _mc2:
+                _total_rec = len(_df_rec)
+                _rows_m = ""
+                for _, _mr in _motivo_counts.iterrows():
+                    _pct_m = round(_mr["Cantidad"] / _total_rec * 100)
+                    _col_m = _MOTIVO_COLORS.get(_mr["Motivo"], "#94a3b8")
+                    _rows_m += (
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                        f'padding:0.5rem 0;border-bottom:1px solid #f1f5f9">'
+                        f'<div style="display:flex;align-items:center;gap:0.5rem">'
+                        f'<span style="width:10px;height:10px;border-radius:50%;background:{_col_m};flex-shrink:0;display:inline-block"></span>'
+                        f'<span style="font-size:0.78rem;color:#374151">{_mr["Motivo"]}</span>'
+                        f'</div>'
+                        f'<div style="display:flex;align-items:baseline;gap:0.4rem">'
+                        f'<span style="font-size:0.72rem;color:#94a3b8">{int(_mr["Cantidad"])}</span>'
+                        f'<span style="font-size:0.9rem;font-weight:700;color:{_col_m}">{_pct_m}%</span>'
+                        f'</div></div>'
+                    )
+                st.markdown(
+                    '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:1.2rem 1.4rem;'
+                    'box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:0.5rem">'
+                    f'<p style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin:0 0 0.8rem">'
+                    f'{_total_rec} rechazos en total</p>'
+                    + _rows_m +
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+
     # ── 2. Actividad reciente ──
     _section_header("Actividad reciente", "⚡")
     ultimos = df_raw.sort_values("createdAt", ascending=False).head(5)
