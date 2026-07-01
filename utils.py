@@ -244,6 +244,7 @@ section.main .block-container [data-testid="stHorizontalBlock"]:first-of-type {
 .kpi-card.green::before  { background: linear-gradient(90deg,#22c55e,#4ade80); }
 .kpi-card.red::before    { background: linear-gradient(90deg,#ef4444,#f87171); }
 .kpi-card.purple::before { background: linear-gradient(90deg,#8b5cf6,#a78bfa); }
+.kpi-card.amber::before  { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
 .kpi-icon {
     font-size: 1.4rem;
     margin-bottom: 0.5rem;
@@ -358,10 +359,10 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
     end_utc   = _tz.localize(datetime.strptime(end,   "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
     if dedup_clients:
         query = f"""
-            SELECT "BankOfferRequests".*, c."id" as "clientId", c."source"
+            SELECT "BankOfferRequests".*, c."id" as "clientId", c."source", c."privacyPolicyAccepted"
             FROM "BankOfferRequests"
             LEFT JOIN (
-                SELECT DISTINCT ON ("rut") "id", "rut", "source"
+                SELECT DISTINCT ON ("rut") "id", "rut", "source", "privacyPolicyAccepted"
                 FROM "Clients"
                 WHERE "businessUnitId" = 73
                 ORDER BY "rut", "createdAt" DESC
@@ -401,6 +402,7 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
             "clientId":  r.get("clientId"),
             "source":    r.get("source"),
             "origin":    r.get("origin"),
+            "privacyPolicyAccepted": r.get("privacyPolicyAccepted"),
             "createdAt":       r.get("createdAt"),
             "updatedAt":       r.get("updatedAt"),
             "rawBankResponse": r.get("rawBankResponse"),
@@ -856,6 +858,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
     pct_env   = _pct_change(env_curr, env_prev)
     pct_rec   = _pct_change(rec_curr, rec_prev)
 
+    consent_curr = int(df_kpi["privacyPolicyAccepted"].eq(True).sum()) if campaign_only and "privacyPolicyAccepted" in df_kpi.columns else 0
+
     by_day_spark = df_kpi.groupby("date").size().reset_index(name="n").set_index("date")["n"]
 
     # ── Rellenar placeholders ──
@@ -882,7 +886,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         )
 
     # ── KPI Cards ──
-    k1, k2, k3, k4 = st.columns(4)
+    _kpi_cols = st.columns(5) if campaign_only else st.columns(4)
+    k1, k2, k3, k4 = _kpi_cols[:4]
     env_spark = df_kpi[df_kpi["status"] == "sent_to_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
     rec_spark = df_kpi[df_kpi["status"] == "rejected_by_bank"].groupby("date").size().reindex(by_day_spark.index, fill_value=0)
 
@@ -918,6 +923,14 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             <div class="kpi-value" data-counter="{rec_curr}">{rec_curr}</div>
             {_trend_arrow(-pct_rec)}
         </div>""", unsafe_allow_html=True)
+    if campaign_only:
+        with _kpi_cols[4]:
+            st.markdown(f"""
+            <div class="kpi-card amber" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.4s;opacity:0">
+                <span class="kpi-icon">🤝</span>
+                <div class="kpi-label">Consentimientos</div>
+                <div class="kpi-value" data-counter="{consent_curr}">{consent_curr}</div>
+            </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
