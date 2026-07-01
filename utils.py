@@ -925,11 +925,13 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         </div>""", unsafe_allow_html=True)
     if campaign_only:
         with _kpi_cols[4]:
+            _consent_pct = round(consent_curr / total_curr * 100) if total_curr else 0
             st.markdown(f"""
             <div class="kpi-card amber" style="animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.4s;opacity:0">
                 <span class="kpi-icon">🤝</span>
                 <div class="kpi-label">Consentimientos</div>
                 <div class="kpi-value" data-counter="{consent_curr}">{consent_curr}</div>
+                <span class="kpi-delta neutral">{_consent_pct}% del total</span>
             </div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
