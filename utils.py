@@ -780,6 +780,16 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         df_raw  = df_raw[df_raw["bukId"].isna() & df_raw["source"].isin(_campaign_sources)]
         if not df_prev.empty:
             df_prev = df_prev[df_prev["bukId"].isna() & df_prev["source"].isin(_campaign_sources)]
+        # Si BCI responde clienteBci:True, mostrar como rechazado en el dashboard
+        def _is_bci_client(rbr):
+            if isinstance(rbr, dict):
+                return rbr.get("cliente", {}).get("clienteBci", False)
+            return False
+        mask = df_raw["rawBankResponse"].apply(_is_bci_client)
+        df_raw.loc[mask, "status"] = "rejected_by_bank"
+        if not df_prev.empty:
+            mask_prev = df_prev["rawBankResponse"].apply(_is_bci_client)
+            df_prev.loc[mask_prev, "status"] = "rejected_by_bank"
     elif exclude_campaign:
         # Excluir leads de campaña (bukId IS NULL) y sin cliente registrado
         if "bukId" in df_raw.columns:
