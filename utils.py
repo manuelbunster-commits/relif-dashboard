@@ -350,7 +350,7 @@ def get_token() -> str:
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFrame:
+def fetch_data(start: str, end: str, dedup_clients: bool = False, campaign_only: bool = False) -> pd.DataFrame:
     token = get_token()
     # Convertir fechas a UTC considerando timezone de Santiago
     _tz = pytz.timezone("America/Santiago")
@@ -358,13 +358,15 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False) -> pd.DataFram
     start_utc = _tz.localize(datetime.strptime(start, "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
     end_utc   = _tz.localize(datetime.strptime(end,   "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
     if dedup_clients:
+        # Para campaña, buscar en todos los businessUnitId (buk-cashback usa buId=78)
+        bu_filter = "" if campaign_only else 'WHERE "businessUnitId" = 73'
         query = f"""
             SELECT "BankOfferRequests".*, c."id" as "clientId", c."source", c."privacyPolicyAccepted"
             FROM "BankOfferRequests"
             LEFT JOIN (
                 SELECT DISTINCT ON ("rut") "id", "rut", "source", "privacyPolicyAccepted"
                 FROM "Clients"
-                WHERE "businessUnitId" = 73
+                {bu_filter}
                 ORDER BY "rut", "createdAt" DESC
             ) c ON "BankOfferRequests"."rut" = c."rut"
             WHERE "BankOfferRequests"."createdAt" >= '{start_utc}'
@@ -720,8 +722,8 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
 
     try:
         with st.spinner("Cargando datos..."):
-            df_raw  = fetch_data(str(start_date), str(end_date), dedup_clients=dedup_clients)
-            df_prev = fetch_data(prev_start, prev_end, dedup_clients=dedup_clients)
+            df_raw  = fetch_data(str(start_date), str(end_date), dedup_clients=dedup_clients, campaign_only=campaign_only)
+            df_prev = fetch_data(prev_start, prev_end, dedup_clients=dedup_clients, campaign_only=campaign_only)
     except Exception:
         st.markdown("""
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;
@@ -773,10 +775,11 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
         if not df_prev.empty:
             df_prev = df_prev[_has_no_client(df_prev) | _is_lank(df_prev)]
     elif campaign_only:
-        # Solo leads de campaña: bukId IS NULL
-        df_raw  = df_raw[df_raw["bukId"].isna()]
+        # Solo leads de campaña: bukId IS NULL y source webpage o buk-cashback
+        _campaign_sources = ["webpage", "buk-cashback"]
+        df_raw  = df_raw[df_raw["bukId"].isna() & df_raw["source"].isin(_campaign_sources)]
         if not df_prev.empty:
-            df_prev = df_prev[df_prev["bukId"].isna()]
+            df_prev = df_prev[df_prev["bukId"].isna() & df_prev["source"].isin(_campaign_sources)]
     elif exclude_campaign:
         # Excluir leads de campaña (bukId IS NULL) y sin cliente registrado
         if "bukId" in df_raw.columns:
