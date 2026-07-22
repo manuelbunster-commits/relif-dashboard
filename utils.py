@@ -571,7 +571,7 @@ _BANK_CONFIGS = {
     "Campañas (prueba)":   dict(bank_filter=None,                  show_salary_range=True,  dedup_clients=True,  chart_days=10),
 }
 
-def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, source_filter: str = None, exclude_ruts: list = None, extra_remuneracion_ruts: list = None):
+def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, chart_scroll: bool = False, dedup_clients: bool = False, chart_days: int = None, bank_selector: bool = False, nan_only: bool = False, campaign_only: bool = False, exclude_campaign: bool = False, show_rejection_reason: bool = False, source_filter: str = None, exclude_ruts: list = None, extra_remuneracion_ruts: list = None, campaign_sources: list = None):
     st.markdown(CARD_CSS, unsafe_allow_html=True)
     st.markdown(SCROLL_ANIM, unsafe_allow_html=True)
 
@@ -776,7 +776,7 @@ def render_dashboard(bank_filter: str = None, show_salary_range: bool = False, c
             df_prev = df_prev[_has_no_client(df_prev) | _is_lank(df_prev)]
     elif campaign_only:
         # Solo leads de campaña: bukId IS NULL y source webpage o buk-cashback
-        _campaign_sources = ["webpage", "buk-cashback"]
+        _campaign_sources = campaign_sources if campaign_sources else ["webpage", "buk-cashback"]
         df_raw  = df_raw[df_raw["bukId"].isna() & df_raw["source"].isin(_campaign_sources)]
         if not df_prev.empty:
             df_prev = df_prev[df_prev["bukId"].isna() & df_prev["source"].isin(_campaign_sources)]
