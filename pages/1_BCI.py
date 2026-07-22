@@ -176,8 +176,9 @@ def _dashboard():
 
 
 pg = st.navigation([
-    st.Page(_dashboard,             title="Dashboard BCI",    icon="📊"),
-    st.Page("3_Funnel_BCI.py",      title="Funnel BCI × Buk", icon="🔀"),
-    st.Page("9_Campana_Junio.py",   title="Campaña Junio 1%", icon="🎯"),
+    st.Page(_dashboard,               title="Dashboard BCI",     icon="📊"),
+    st.Page("3_Funnel_BCI.py",        title="Funnel BCI × Buk", icon="🔀"),
+    st.Page("9_Campana_Junio.py",     title="Campaña Junio 1%", icon="🎯"),
+    st.Page("10_Estanque_Copec.py",   title="Estanque Copec",   icon="⛽"),
 ])
 pg.run()
