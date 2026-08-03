@@ -27,5 +27,5 @@ render_dashboard(
     campaign_only=True,
     show_rejection_reason=True,
     exclude_ruts=TEST_RUTS,
-    campaign_sources=["buk-estanque-copec"],
+    campaign_sources=["buk-estanque-copec", "buk-estanque"],
 )
