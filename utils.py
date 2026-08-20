@@ -127,6 +127,11 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 /* navegación nativa visible */
 
+/* ── Header nativo de Streamlit: fixed y flota sobre el contenido cuando
+   block-container tiene padding-top:0, tapando el borde superior de los
+   banners custom. Se oculta porque no se usa (sidebar toggle es custom). ── */
+[data-testid="stHeader"] { display: none !important; }
+
 /* ── Alinear columnas del sidebar verticalmente ── */
 [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
     align-items: center !important;
@@ -419,6 +424,38 @@ def fetch_data(start: str, end: str, dedup_clients: bool = False, campaign_only:
     df["date"]    = df["createdAt"].dt.date
     df["hour"]    = df["createdAt"].dt.hour
     df["weekday"] = df["createdAt"].dt.day_name()
+    return df
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_track2_data(start: str, end: str) -> pd.DataFrame:
+    """Track 2 BCI (créditos by Buk) — verificación de employment vía ApiRequests."""
+    token = get_token()
+    _tz = pytz.timezone("America/Santiago")
+    _fmt = "%Y-%m-%dT%H:%M:%SZ"
+    start_utc = _tz.localize(datetime.strptime(start, "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
+    end_utc   = _tz.localize(datetime.strptime(end,   "%Y-%m-%d")).astimezone(pytz.utc).strftime(_fmt)
+    query = f"""
+        SELECT "id", "createdAt", "statusCode", "success", "error", "rut", "bankId"
+        FROM "ApiRequests"
+        WHERE "serviceName" = 'employment'
+          AND "createdAt" >= '{start_utc}'
+          AND "createdAt" <  '{end_utc}'
+    """
+    resp = requests.post(
+        RELIF_EXECUTE_URL,
+        headers={"Authorization": f"Bearer {token}"},
+        json={"userQuery": query.strip()},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    results = resp.json().get("results", [])
+    if not results:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(results)
+    df["createdAt"] = pd.to_datetime(df["createdAt"], utc=True).dt.tz_convert("America/Santiago")
+    df["date"] = df["createdAt"].dt.date
     return df
 
 
