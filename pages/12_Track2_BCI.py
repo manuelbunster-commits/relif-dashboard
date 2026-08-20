@@ -243,6 +243,65 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
+# ── Gráfico: consultas acumuladas ────────────────────────────────────────────
+_section_header("Consultas acumuladas", "📊")
+
+cum = df.groupby("date").size().reset_index(name="n").sort_values("date")
+cum["acumulado"] = cum["n"].cumsum()
+
+fig_cum = go.Figure()
+fig_cum.add_trace(go.Scatter(
+    x=cum["date"],
+    y=cum["acumulado"],
+    mode="lines+markers",
+    line=dict(color="#2563eb", width=2.5),
+    marker=dict(size=7, color="#2563eb"),
+    fill="tozeroy",
+    fillcolor="rgba(37,99,235,0.08)",
+    hovertemplate="%{x|%d %b}<br><b>%{y:,}</b> consultas acumuladas<extra></extra>",
+))
+fig_cum.update_layout(
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    margin=dict(t=20, b=20, l=0, r=0),
+    height=300,
+    showlegend=False,
+    xaxis=dict(title="", type="date", dtick=86400000.0, tickformat="%d %b", showgrid=False),
+    yaxis=dict(title="Consultas acumuladas", gridcolor="#f1f5f9", zeroline=False),
+    font=dict(family="Inter, sans-serif", size=13, color="#334155"),
+    hovermode="x unified",
+)
+st.plotly_chart(fig_cum, use_container_width=True)
+
+# ── Heat map: volumen por hora del día ───────────────────────────────────────
+_section_header("Volumen por hora del día", "🔥")
+
+df["hour"] = df["createdAt"].dt.hour
+heat = df.groupby(["date", "hour"]).size().reset_index(name="n")
+pivot = heat.pivot(index="date", columns="hour", values="n").reindex(columns=range(24), fill_value=0)
+pivot = pivot.sort_index(ascending=False)  # día más reciente arriba
+
+fig_heat = go.Figure(data=go.Heatmap(
+    z=pivot.values,
+    x=[f"{h:02d}h" for h in pivot.columns],
+    y=[d.strftime("%d %b") for d in pivot.index],
+    colorscale=[[0, "#eff6ff"], [1, "#1d4ed8"]],
+    xgap=2,
+    ygap=2,
+    hovertemplate="%{y} · %{x}<br><b>%{z}</b> consultas<extra></extra>",
+    colorbar=dict(title="Consultas", thickness=14, outlinewidth=0),
+))
+fig_heat.update_layout(
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    margin=dict(t=20, b=20, l=0, r=0),
+    height=max(160, 70 * len(pivot.index)),
+    xaxis=dict(title="", showgrid=False, dtick=1),
+    yaxis=dict(title="", showgrid=False),
+    font=dict(family="Inter, sans-serif", size=12, color="#334155"),
+)
+st.plotly_chart(fig_heat, use_container_width=True)
+
 # ── Gráfico 2: motivos de falla ──────────────────────────────────────────────
 _section_header("Motivos de falla", "🧭")
 
