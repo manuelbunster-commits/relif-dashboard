@@ -291,3 +291,18 @@ else:
     )
     st.plotly_chart(fig2, use_container_width=True)
     st.caption("🟠 Respuesta de negocio (4xx) · 🔴 Error de sistema (5xx)")
+
+    # ── Detalle: RUTs con "Upstream unknown error" ──────────────────────────
+    upstream_errors = fail_df[fail_df["error"] == "Upstream unknown error"].sort_values("createdAt", ascending=False)
+    if not upstream_errors.empty:
+        _section_header(f"RUTs con \"Upstream unknown error\" ({len(upstream_errors)})", "🛠️")
+        rows_html = "".join(
+            f'<tr><td>{r.rut}</td><td>{r.createdAt.strftime("%d-%m-%Y %H:%M")}</td><td>{r.statusCode}</td></tr>'
+            for r in upstream_errors.itertuples()
+        )
+        st.markdown(f"""
+        <table class="detail-table">
+            <thead><tr><th>RUT</th><th>Fecha</th><th>Status</th></tr></thead>
+            <tbody>{rows_html}</tbody>
+        </table>
+        """, unsafe_allow_html=True)
