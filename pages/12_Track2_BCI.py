@@ -273,31 +273,41 @@ fig_cum.update_layout(
 )
 st.plotly_chart(fig_cum, use_container_width=True)
 
-# ── Heat map: volumen por hora del día ───────────────────────────────────────
-_section_header("Volumen por hora del día", "🔥")
+# ── Heat map: patrón semanal (Lunes-Domingo × hora) ─────────────────────────
+_section_header("Patrón semanal", "🔥")
+st.caption("Promedio de consultas por día de la semana y hora, a lo largo de todo el período seleccionado.")
 
-df["hour"] = df["createdAt"].dt.hour
-heat = df.groupby(["date", "hour"]).size().reset_index(name="n")
-pivot = heat.pivot(index="date", columns="hour", values="n").reindex(columns=range(24), fill_value=0)
-pivot = pivot.sort_index(ascending=False)  # día más reciente arriba
+DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+df["hour"]    = df["createdAt"].dt.hour
+df["weekday"] = df["createdAt"].dt.weekday  # 0=lunes
+
+heat = df.groupby(["date", "weekday", "hour"]).size().reset_index(name="n")
+pattern = (
+    heat.groupby(["weekday", "hour"])["n"].mean()
+    .reset_index()
+    .pivot(index="weekday", columns="hour", values="n")
+    .reindex(index=range(7), columns=range(24), fill_value=0)
+    .round(1)
+)
 
 fig_heat = go.Figure(data=go.Heatmap(
-    z=pivot.values,
-    x=[f"{h:02d}h" for h in pivot.columns],
-    y=[d.strftime("%d %b") for d in pivot.index],
+    z=pattern.values,
+    x=[f"{h:02d}h" for h in pattern.columns],
+    y=DIAS_ES,
     colorscale=[[0, "#eff6ff"], [1, "#1d4ed8"]],
     xgap=2,
     ygap=2,
-    hovertemplate="%{y} · %{x}<br><b>%{z}</b> consultas<extra></extra>",
-    colorbar=dict(title="Consultas", thickness=14, outlinewidth=0),
+    hovertemplate="%{y} · %{x}<br><b>%{z}</b> consultas promedio<extra></extra>",
+    colorbar=dict(title="Promedio", thickness=14, outlinewidth=0),
 ))
 fig_heat.update_layout(
     plot_bgcolor="white",
     paper_bgcolor="white",
     margin=dict(t=20, b=20, l=0, r=0),
-    height=max(160, 70 * len(pivot.index)),
+    height=260,
     xaxis=dict(title="", showgrid=False, dtick=1),
-    yaxis=dict(title="", showgrid=False),
+    yaxis=dict(title="", showgrid=False, autorange="reversed"),
     font=dict(family="Inter, sans-serif", size=12, color="#334155"),
 )
 st.plotly_chart(fig_heat, use_container_width=True)
