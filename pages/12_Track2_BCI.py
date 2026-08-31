@@ -102,7 +102,8 @@ n_500     = int((df["statusCode"] == 500).sum())
 pct_404   = round(n_404 / total * 100) if total else 0
 pct_500   = round(n_500 / total * 100) if total else 0
 
-ingreso_consultas = total * PRECIO_CONSULTA
+n_fail            = total - n_success
+ingreso_consultas = n_fail * PRECIO_CONSULTA
 ingreso_exitos    = n_success * BONO_EXITO
 ingreso_total     = ingreso_consultas + ingreso_exitos
 
@@ -149,9 +150,9 @@ with m1:
     st.markdown(f"""
     <div class="kpi-card purple" style="min-height:126px;animation:fadeSlideUp 0.45s ease forwards;animation-delay:0.4s;opacity:0">
         <span class="kpi-icon">💵</span>
-        <div class="kpi-label">Ingreso por consultas</div>
+        <div class="kpi-label">Ingreso por consultas fallidas</div>
         <div class="kpi-value">${'{:,}'.format(ingreso_consultas).replace(',', '.')}</div>
-        <span class="kpi-delta neutral">{total:,} × $30</span>
+        <span class="kpi-delta neutral">{n_fail:,} × $30</span>
     </div>""", unsafe_allow_html=True)
 with m2:
     st.markdown(f"""
